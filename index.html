@@ -423,6 +423,14 @@ tr:hover td { background: var(--sky-pale); }
             <label data-i18n="age">Edad</label>
             <input type="number" id="inputAge" min="5" max="99" placeholder="—">
           </div>
+          <div class="form-group" style="flex:1">
+            <label data-i18n="nationality">País</label>
+            <input type="text" id="inputNationality" maxlength="3" placeholder="ESP" style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label data-i18n="sailNumber">N.º Vela</label>
+            <input type="text" id="inputSailNumber" placeholder="—">
+          </div>
           <div class="form-group" style="flex:0;justify-content:flex-end">
             <label>&nbsp;</label>
             <button class="btn btn-primary" onclick="addCompetitor()" data-i18n="add">Añadir</button>
@@ -435,6 +443,8 @@ tr:hover td { background: var(--sky-pale); }
             <thead>
               <tr>
                 <th>#</th>
+                <th data-i18n="nationality">País</th>
+                <th data-i18n="sailNumber">N.º Vela</th>
                 <th data-i18n="name">Nombre</th>
                 <th data-i18n="weightKg">Peso (kg)</th>
                 <th data-i18n="age">Edad</th>
@@ -548,10 +558,12 @@ const i18n = {
     genNote: "Genera nombres y datos aleatorios realistas. Cada vez serán distintos.",
     clearAll: "Borrar todo",
     csvDrop: "Arrastra un CSV aquí o haz clic para seleccionar",
-    csvFormat: "Formato: nombre, peso (kg), edad (opcional)",
+    csvFormat: "Formato: nombre, peso (kg), edad, nacionalidad, n.º vela (opcionales)",
     name: "Nombre",
     weightKg: "Peso (kg)",
     age: "Edad",
+    nationality: "País",
+    sailNumber: "N.º Vela",
     add: "Añadir",
     total: "Total",
     exportCSV: "Exportar CSV",
@@ -630,10 +642,12 @@ const i18n = {
     genNote: "Generates realistic random names and data. Different each time.",
     clearAll: "Clear all",
     csvDrop: "Drag a CSV here or click to select",
-    csvFormat: "Format: name, weight (kg), age (optional)",
+    csvFormat: "Format: name, weight (kg), age, nationality, sail no. (optional)",
     name: "Name",
     weightKg: "Weight (kg)",
     age: "Age",
+    nationality: "Country",
+    sailNumber: "Sail No.",
     add: "Add",
     total: "Total",
     exportCSV: "Export CSV",
@@ -720,17 +734,30 @@ function t(key) { return i18n[currentLang][key] || key; }
 let competitors = [];
 let lastResults = null;
 
-function addCompetitor(name, weight, age) {
+function countryFlag(code) {
+  if (!code) return '';
+  const cc = code.toUpperCase();
+  const MAP = {ESP:'ES',GER:'DE',FRA:'FR',ITA:'IT',POR:'PT',NED:'NL',SWE:'SE',NOR:'NO',DEN:'DK',FIN:'FI',SUI:'CH',AUT:'AT',POL:'PL',CZE:'CZ',HUN:'HU',CRO:'HR',GRE:'GR',TUR:'TR',RUS:'RU',UKR:'UA',GBR:'GB',IRL:'IE',BEL:'BE',LUX:'LU',ROU:'RO',BUL:'BG',SRB:'RS',SLO:'SI',SVK:'SK',LTU:'LT',LAT:'LV',EST:'EE',JPN:'JP',AUS:'AU',NZL:'NZ',USA:'US',CAN:'CA',BRA:'BR',ARG:'AR',CHI:'CL',MEX:'MX',COL:'CO',IND:'IN',ISR:'IL',RSA:'ZA',CHN:'CN',KOR:'KR',THA:'TH',MAS:'MY',SGP:'SG'};
+  const iso = MAP[cc] || cc.slice(0,2);
+  if (iso.length !== 2) return cc;
+  return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+function addCompetitor(name, weight, age, nationality, sailNumber) {
   if (!name) {
     name = document.getElementById('inputName').value.trim();
     weight = parseFloat(document.getElementById('inputWeight').value);
     age = document.getElementById('inputAge').value ? parseInt(document.getElementById('inputAge').value) : null;
+    nationality = document.getElementById('inputNationality').value.trim().toUpperCase() || null;
+    sailNumber = document.getElementById('inputSailNumber').value.trim() || null;
   }
   if (!name || isNaN(weight) || weight <= 0) return;
-  competitors.push({ name, weight, age });
+  competitors.push({ name, weight, age, nationality: nationality || null, sailNumber: sailNumber || null });
   document.getElementById('inputName').value = '';
   document.getElementById('inputWeight').value = '';
   document.getElementById('inputAge').value = '';
+  document.getElementById('inputNationality').value = '';
+  document.getElementById('inputSailNumber').value = '';
   renderCompetitors();
 }
 
@@ -753,6 +780,8 @@ function renderCompetitors() {
     const origIdx = competitors.indexOf(c);
     return `<tr>
       <td>${i+1}</td>
+      <td>${c.nationality ? countryFlag(c.nationality) + ' ' + c.nationality : '—'}</td>
+      <td style="font-family:var(--mono)">${c.sailNumber || '—'}</td>
       <td>${c.name}</td>
       <td style="font-family:var(--mono)">${c.weight.toFixed(1)}</td>
       <td style="font-family:var(--mono)">${c.age || '—'}</td>
@@ -787,8 +816,10 @@ function parseCSV(text) {
     const name = parts[0];
     const weight = parseFloat(parts[1]);
     const age = parts[2] ? parseInt(parts[2]) : null;
+    const nationality = parts[3] ? parts[3].toUpperCase() : null;
+    const sailNumber = parts[4] || null;
     if (name && !isNaN(weight) && weight > 0) {
-      competitors.push({ name, weight, age: (age && !isNaN(age)) ? age : null });
+      competitors.push({ name, weight, age: (age && !isNaN(age)) ? age : null, nationality: nationality || null, sailNumber: sailNumber || null });
     }
   }
   renderCompetitors();
@@ -796,9 +827,9 @@ function parseCSV(text) {
 
 function exportCSV() {
   if (!competitors.length) return;
-  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad\n' : 'Name,Weight,Age\n';
+  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad,País,N.º Vela\n' : 'Name,Weight,Age,Country,Sail No.\n';
   competitors.sort((a,b) => a.weight - b.weight).forEach(c => {
-    csv += `${c.name},${c.weight},${c.age||''}\n`;
+    csv += `${c.name},${c.weight},${c.age||''},${c.nationality||''},${c.sailNumber||''}\n`;
   });
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
@@ -818,7 +849,7 @@ dz.addEventListener('drop', e => {
 });
 
 // Enter key to add
-document.querySelectorAll('#inputName,#inputWeight,#inputAge').forEach(el => {
+document.querySelectorAll('#inputName,#inputWeight,#inputAge,#inputNationality,#inputSailNumber').forEach(el => {
   el.addEventListener('keydown', e => { if (e.key === 'Enter') addCompetitor(); });
 });
 
@@ -853,6 +884,39 @@ const LAST_NAMES = [
   "Ríos","van Dijk","Molina","Ortega","Bauer","Volkov","Cruz","Giménez","Hakansson",
   "Petersen","Castellano","Sundström","López","Hofmann","O'Brien","Petit","Singh","Patel"
 ];
+
+const COUNTRIES = [
+  'ESP','FRA','GER','ITA','POR','NED','SWE','NOR','DEN','FIN',
+  'SUI','AUT','POL','CZE','HUN','CRO','GRE','GBR','IRL','BEL',
+  'ROU','SRB','SLO','BRA','ARG','USA','JPN','AUS','ISR','RSA'
+];
+
+function generateNationality() {
+  // Weighted: southern European countries more common for windsurfing
+  const r = Math.random();
+  if (r < 0.18) return 'ESP';
+  if (r < 0.30) return 'FRA';
+  if (r < 0.40) return 'ITA';
+  if (r < 0.48) return 'GER';
+  if (r < 0.54) return 'POR';
+  if (r < 0.60) return 'NED';
+  if (r < 0.65) return 'GBR';
+  if (r < 0.70) return 'SWE';
+  if (r < 0.74) return 'NOR';
+  if (r < 0.78) return 'DEN';
+  if (r < 0.82) return 'SUI';
+  if (r < 0.85) return 'AUT';
+  if (r < 0.88) return 'POL';
+  if (r < 0.90) return 'GRE';
+  if (r < 0.92) return 'CRO';
+  if (r < 0.94) return 'BRA';
+  if (r < 0.96) return 'ARG';
+  return COUNTRIES[randInt(0, COUNTRIES.length - 1)];
+}
+
+function generateSailNumber(nationality) {
+  return randInt(1, 9999);
+}
 
 function randBetween(min, max) { return min + Math.random() * (max - min); }
 function randInt(min, max) { return Math.floor(randBetween(min, max + 1)); }
@@ -948,8 +1012,10 @@ function generateFleet() {
 
     const weight = generateWeight(weightProfile);
     const age = Math.random() < 0.03 ? null : generateAge(ageProfile); // 3% sin edad
+    const nationality = generateNationality();
+    const sailNumber = String(generateSailNumber(nationality));
 
-    competitors.push({ name, weight, age });
+    competitors.push({ name, weight, age, nationality, sailNumber });
   }
 
   renderCompetitors();
@@ -1155,7 +1221,7 @@ function renderGroupCards(groups, systemName) {
       <div class="stat"><span class="stat-label">${t('minWeight')}</span><span class="stat-value">${s.count ? s.min.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('maxWeight')}</span><span class="stat-value">${s.count ? s.max.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('avgWeight')}</span><span class="stat-value">${s.count ? s.avg.toFixed(1) : '—'} kg</span></div>
-      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => c.name).join(', ') || '—'}</div>
+      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.sailNumber ? ' (' + c.sailNumber + ')' : '')).join(', ') || '—'}</div>
     </div>
   `).join('')}</div>`;
 }
@@ -1401,9 +1467,9 @@ function exportGroupsCSV() {
   if (!lastResults) return;
   const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
   
-  let csv = currentLang === 'es' 
-    ? 'Grupo,Nombre,Peso (kg),Edad,Sistema\n'
-    : 'Group,Name,Weight (kg),Age,System\n';
+  let csv = currentLang === 'es'
+    ? 'Grupo,Nombre,Peso (kg),Edad,País,N.º Vela,Sistema\n'
+    : 'Group,Name,Weight (kg),Age,Country,Sail No.,System\n';
 
   const systems = [
     { name: t('elastic'), groups: lastResults.elastic },
@@ -1414,7 +1480,7 @@ function exportGroupsCSV() {
   systems.forEach(sys => {
     sys.groups.forEach((group, gi) => {
       group.forEach(c => {
-        csv += `${groupNames[gi]},${c.name},${c.weight},${c.age || ''},${sys.name}\n`;
+        csv += `${groupNames[gi]},${c.name},${c.weight},${c.age || ''},${c.nationality || ''},${c.sailNumber || ''},${sys.name}\n`;
       });
     });
     csv += '\n';
