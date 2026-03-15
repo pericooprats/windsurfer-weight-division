@@ -233,6 +233,7 @@ tr:hover td { background: var(--sky-pale); }
 .system-tab.tab-split.active { border-top: 3px solid var(--blue); }
 .system-tab.tab-elastic.active { border-top: 3px solid var(--teal); }
 .system-tab.tab-compare.active { border-top: 3px solid var(--navy); }
+.system-tab.tab-chart.active { border-top: 3px solid #8b5cf6; }
 
 .tab-content {
   background: white; border: 1px solid var(--gray-200);
@@ -311,6 +312,9 @@ tr:hover td { background: var(--sky-pale); }
   .best-label { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--teal-light) !important; }
   .compare-table { break-inside: avoid; break-before: avoid; page-break-before: avoid; }
   .notice { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: avoid; page-break-after: avoid; }
+  .metrics-bar .metric-chip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .metrics-bar .dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  svg circle, svg rect, svg line { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* --- RESPONSIVE --- */
@@ -492,6 +496,7 @@ tr:hover td { background: var(--sky-pale); }
       <div class="card-header">
         <h2><span class="icon">📊</span> <span data-i18n="results">Resultados</span></h2>
         <div style="display:flex;gap:6px" class="no-print">
+          <button class="btn btn-secondary btn-sm" onclick="exportGroupsCSV()" data-i18n="exportGroups">Exportar grupos CSV</button>
           <button class="btn btn-secondary btn-sm" onclick="window.print()" data-i18n="print">Imprimir / PDF</button>
         </div>
       </div>
@@ -502,6 +507,7 @@ tr:hover td { background: var(--sky-pale); }
         <button class="system-tab tab-fixed" onclick="showTab('fixed')" data-i18n="tabFixed">Fijo</button>
         <button class="system-tab tab-split" onclick="showTab('split')" data-i18n="tabSplit">Flotante</button>
         <button class="system-tab tab-compare" onclick="showTab('compare')" data-i18n="tabCompare">Comparativa</button>
+        <button class="system-tab tab-chart" onclick="showTab('chart')" data-i18n="tabChart">Distribución</button>
       </div>
 
       <!-- Tab contents -->
@@ -509,6 +515,7 @@ tr:hover td { background: var(--sky-pale); }
       <div class="tab-content" id="tab-fixed"></div>
       <div class="tab-content" id="tab-split"></div>
       <div class="tab-content" id="tab-compare"></div>
+      <div class="tab-content" id="tab-chart"></div>
     </div>
   </div>
 </div>
@@ -588,6 +595,17 @@ const i18n = {
     avgWeight: "Peso medio",
     scoreLabel: "Puntuación (menor = mejor)",
     best: "Mejor",
+    tabChart: "Distribución",
+    exportGroups: "Exportar grupos CSV",
+    chartTitle: "Distribución de pesos por sistema",
+    chartFixed: "Cortes fijo",
+    chartSplit: "Cortes flotante",
+    chartElastic: "Cortes elástico",
+    chartLegend: "Cada punto = 1 regatista. Las líneas verticales indican los cortes entre grupos.",
+    fleetSummary: "Resumen de flota",
+    totalFleet: "Flota total",
+    weightRange: "Rango total",
+    median: "Mediana",
   },
   en: {
     title: "Elastic Weight Division",
@@ -659,6 +677,17 @@ const i18n = {
     avgWeight: "Avg weight",
     scoreLabel: "Score (lower = better)",
     best: "Best",
+    tabChart: "Distribution",
+    exportGroups: "Export groups CSV",
+    chartTitle: "Weight distribution by system",
+    chartFixed: "Fixed cuts",
+    chartSplit: "Split cuts",
+    chartElastic: "Elastic cuts",
+    chartLegend: "Each dot = 1 competitor. Vertical lines indicate group cut-offs.",
+    fleetSummary: "Fleet summary",
+    totalFleet: "Total fleet",
+    weightRange: "Total range",
+    median: "Median",
   }
 };
 
@@ -1224,6 +1253,178 @@ function renderResults(res) {
       ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
     </p>
   `;
+
+  // Chart tab
+  document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
+  renderChart(res);
+}
+
+// ============================================================
+// DISTRIBUTION CHART
+// ============================================================
+function renderChart(res) {
+  const sorted = [...competitors].sort((a,b) => a.weight - b.weight);
+  const minW = sorted[0].weight;
+  const maxW = sorted[sorted.length - 1].weight;
+  const padding = (maxW - minW) * 0.05 || 2;
+  const wMin = minW - padding;
+  const wMax = maxW + padding;
+
+  const svgW = 680;
+  const rowH = 56;
+  const topMargin = 60;
+  const botMargin = 50;
+  const leftM = 60;
+  const rightM = 20;
+  const chartW = svgW - leftM - rightM;
+  
+  function xPos(w) { return leftM + ((w - wMin) / (wMax - wMin)) * chartW; }
+
+  // Get cut points for each system
+  function getCuts(groups) {
+    const cuts = [];
+    let idx = 0;
+    for (let g = 0; g < groups.length - 1; g++) {
+      idx += groups[g].length;
+      const wLeft = sorted[idx - 1].weight;
+      const wRight = sorted[idx].weight;
+      cuts.push((wLeft + wRight) / 2);
+    }
+    return cuts;
+  }
+
+  const systems = [
+    { name: t('elastic'), groups: res.elastic, color: '#0d9488', bg: '#ccfbf1' },
+    { name: t('fixed'), groups: res.fixed, color: '#d97706', bg: '#fef3c7' },
+    { name: t('split'), groups: res.split, color: '#2563eb', bg: '#dbeafe' },
+  ];
+
+  const svgH = topMargin + systems.length * rowH + botMargin;
+  const groupColors = ['#3b82f6', '#22c55e', '#eab308', '#ef4444'];
+
+  // Fleet summary chips
+  const avgW = (sorted.reduce((s,c) => s + c.weight, 0) / sorted.length).toFixed(1);
+  const medianW = sorted[Math.floor(sorted.length / 2)].weight.toFixed(1);
+
+  let html = `
+    <div class="metrics-bar" style="margin-bottom:16px">
+      <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('totalFleet')}: <span class="val">${sorted.length}</span></div>
+      <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('weightRange')}: <span class="val">${minW.toFixed(1)} – ${maxW.toFixed(1)} kg</span></div>
+      <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('avgWeight')}: <span class="val">${avgW} kg</span></div>
+      <div class="metric-chip"><span class="dot" style="background:var(--amber)"></span> ${t('median')}: <span class="val">${medianW} kg</span></div>
+    </div>
+    <svg width="100%" viewBox="0 0 ${svgW} ${svgH}" style="max-width:100%;font-family:'DM Sans',sans-serif">
+  `;
+
+  // Weight axis ticks
+  const step = Math.ceil((wMax - wMin) / 10);
+  const firstTick = Math.ceil(wMin / step) * step;
+  for (let w = firstTick; w <= wMax; w += step) {
+    const x = xPos(w);
+    html += `<line x1="${x}" y1="${topMargin - 8}" x2="${x}" y2="${topMargin + systems.length * rowH}" stroke="#e2e8f0" stroke-width="0.5"/>`;
+    html += `<text x="${x}" y="${topMargin - 14}" text-anchor="middle" fill="#94a3b8" font-size="10">${w}</text>`;
+  }
+  html += `<text x="${svgW/2}" y="${topMargin - 34}" text-anchor="middle" fill="#475569" font-size="12" font-weight="500">${t('chartTitle')}</text>`;
+  // "kg" label
+  html += `<text x="${svgW - rightM}" y="${topMargin + systems.length * rowH + 20}" text-anchor="end" fill="#94a3b8" font-size="10">kg</text>`;
+
+  // Render each system row
+  systems.forEach((sys, si) => {
+    const y = topMargin + si * rowH;
+    const cuts = getCuts(sys.groups);
+
+    // Row background
+    html += `<rect x="${leftM}" y="${y}" width="${chartW}" height="${rowH - 4}" rx="4" fill="${sys.bg}" opacity="0.4"/>`;
+    
+    // Group zones (colored bands between cuts)
+    const allCuts = [wMin, ...cuts, wMax];
+    for (let g = 0; g < allCuts.length - 1; g++) {
+      const x1 = xPos(allCuts[g]);
+      const x2 = xPos(allCuts[g + 1]);
+      html += `<rect x="${x1}" y="${y + 2}" width="${x2 - x1}" height="${rowH - 8}" rx="3" fill="${groupColors[g]}" opacity="0.08"/>`;
+    }
+
+    // Cut lines
+    cuts.forEach(c => {
+      const x = xPos(c);
+      html += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + rowH - 4}" stroke="${sys.color}" stroke-width="2" stroke-dasharray="4 2"/>`;
+    });
+
+    // Dots (competitors)
+    let usedPositions = [];
+    sorted.forEach(comp => {
+      const baseX = xPos(comp.weight);
+      // Jitter to avoid overlap
+      let dotY = y + rowH / 2;
+      let jitterX = 0;
+      const overlap = usedPositions.filter(p => Math.abs(p.x - baseX) < 6 && Math.abs(p.y - dotY) < 6);
+      if (overlap.length > 0) {
+        dotY = y + 12 + (overlap.length % 4) * 8;
+        jitterX = (overlap.length % 3 - 1) * 3;
+      }
+      usedPositions.push({ x: baseX + jitterX, y: dotY });
+
+      // Color by group
+      let gIdx = 0;
+      let acc = 0;
+      for (let g = 0; g < sys.groups.length; g++) {
+        acc += sys.groups[g].length;
+        if (sorted.indexOf(comp) < acc) { gIdx = g; break; }
+      }
+      html += `<circle cx="${baseX + jitterX}" cy="${dotY}" r="3.5" fill="${groupColors[gIdx]}" opacity="0.8"/>`;
+    });
+
+    // System label
+    html += `<text x="${leftM - 8}" y="${y + rowH / 2 + 1}" text-anchor="end" fill="${sys.color}" font-size="11" font-weight="600">${sys.name}</text>`;
+  });
+
+  // Fixed weight lines (70, 79, 88) as reference
+  [70, 79, 88].forEach(w => {
+    if (w >= wMin && w <= wMax) {
+      const x = xPos(w);
+      html += `<line x1="${x}" y1="${topMargin + systems.length * rowH + 2}" x2="${x}" y2="${topMargin + systems.length * rowH + 12}" stroke="#d97706" stroke-width="1.5"/>`;
+      html += `<text x="${x}" y="${topMargin + systems.length * rowH + 24}" text-anchor="middle" fill="#d97706" font-size="9">${w}</text>`;
+    }
+  });
+
+  html += `</svg>
+    <p style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center">${t('chartLegend')}</p>
+  `;
+
+  document.getElementById('tab-chart').innerHTML = html;
+}
+
+// ============================================================
+// EXPORT GROUPS TO CSV
+// ============================================================
+function exportGroupsCSV() {
+  if (!lastResults) return;
+  const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
+  
+  let csv = currentLang === 'es' 
+    ? 'Grupo,Nombre,Peso (kg),Edad,Sistema\n'
+    : 'Group,Name,Weight (kg),Age,System\n';
+
+  const systems = [
+    { name: t('elastic'), groups: lastResults.elastic },
+    { name: t('fixed'), groups: lastResults.fixed },
+    { name: t('split'), groups: lastResults.split }
+  ];
+
+  systems.forEach(sys => {
+    sys.groups.forEach((group, gi) => {
+      group.forEach(c => {
+        csv += `${groupNames[gi]},${c.name},${c.weight},${c.age || ''},${sys.name}\n`;
+      });
+    });
+    csv += '\n';
+  });
+
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `windsurfer_groups_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 function showTab(tab) {

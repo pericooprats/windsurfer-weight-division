@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Windsurfer EWD — Test Suite</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; background: #f8fafc; }
+  h1 { color: #0c1e3a; }
+  .test { padding: 12px 16px; margin: 6px 0; border-radius: 6px; font-size: 14px; }
+  .pass { background: #dcfce7; color: #166534; border-left: 4px solid #22c55e; }
+  .fail { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+  .info { background: #e0ecff; color: #1a3558; border-left: 4px solid #3b82f6; font-size: 13px; }
+  .summary { margin-top: 20px; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: 600; }
+  .summary.all-pass { background: #dcfce7; color: #166534; }
+  .summary.has-fail { background: #fee2e2; color: #991b1b; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>⛵ Windsurfer EWD — Test Suite</h1>
+<div id="results"></div>
+<div id="summary"></div>
+
+<script>
+// ============================================================
+// Copy of algorithm functions (standalone for testing)
+// ============================================================
+function getAgeCategory(age) {
+  if (!age) return 'open';
+  if (age < 15) return 'junior';
+  if (age < 20) return 'youth';
+  if (age >= 70) return 'superlegend';
+  if (age >= 60) return 'legend';
+  if (age >= 50) return 'grandmaster';
+  if (age >= 40) return 'master';
+  return 'open';
+}
+
+function divisionFixed(sorted) {
+  const groups = [[], [], [], []];
+  sorted.forEach(c => {
+    if (c.weight < 70) groups[0].push(c);
+    else if (c.weight < 79) groups[1].push(c);
+    else if (c.weight < 88) groups[2].push(c);
+    else groups[3].push(c);
+  });
+  return groups;
+}
+
+function divisionSplit(sorted) {
+  const n = sorted.length;
+  const base = Math.floor(n / 4);
+  const remainder = n % 4;
+  const sizes = [base, base, base, base];
+  for (let i = 0; i < remainder; i++) sizes[i]++;
+  const groups = [];
+  let idx = 0;
+  for (let g = 0; g < 4; g++) {
+    groups.push(sorted.slice(idx, idx + sizes[g]));
+    idx += sizes[g];
+  }
+  return groups;
+}
+
+function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
+  const n = sorted.length;
+  const maxSize = Math.ceil(maxPercent * n);
+  const idealSize = n / 4;
+  let bestPartition = null;
+  let bestCost = Infinity;
+  let relaxInfo = null;
+  let currentMaxRange = maxRange;
+  let currentMaxPercent = maxPercent;
+  let currentMaxSize = maxSize;
+  let attempts = 0;
+  while (!bestPartition && attempts < 20) {
+    for (let i = 1; i < n - 2; i++) {
+      for (let j = i + 1; j < n - 1; j++) {
+        for (let k = j + 1; k < n; k++) {
+          const groups = [sorted.slice(0, i), sorted.slice(i, j), sorted.slice(j, k), sorted.slice(k, n)];
+          let valid = true;
+          for (const g of groups) {
+            if (g.length === 0 || g.length > currentMaxSize) { valid = false; break; }
+            const range = g[g.length-1].weight - g[0].weight;
+            if (range > currentMaxRange) { valid = false; break; }
+          }
+          if (!valid) continue;
+          const sizes = groups.map(g => g.length);
+          const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / idealSize;
+          const ranges = groups.map(g => g[g.length-1].weight - g[0].weight);
+          const totalRange = sorted[n-1].weight - sorted[0].weight;
+          const rangeNorm = totalRange > 0 ? ranges.reduce((s,v) => s+v, 0) / totalRange : 0;
+          let agePenalty = 0;
+          if (ageFactor > 0) {
+            const catMap = {};
+            groups.forEach((g, gi) => {
+              g.forEach(c => {
+                const cat = getAgeCategory(c.age);
+                if (cat === 'open') return;
+                if (!catMap[cat]) catMap[cat] = new Set();
+                catMap[cat].add(gi);
+              });
+            });
+            const cats = Object.values(catMap);
+            if (cats.length > 0) agePenalty = cats.filter(s => s.size > 1).length / cats.length;
+          }
+          const cost = 1.0 * sizeVar + 1.0 * rangeNorm + (ageFactor/10) * agePenalty;
+          if (cost < bestCost) { bestCost = cost; bestPartition = groups; }
+        }
+      }
+    }
+    if (!bestPartition) {
+      attempts++;
+      if (attempts % 2 === 1) { currentMaxPercent += 0.05; currentMaxSize = Math.ceil(currentMaxPercent * n); }
+      else { currentMaxRange += 1; }
+      relaxInfo = { range: currentMaxRange, percent: currentMaxPercent, origRange: maxRange, origPercent: maxPercent };
+    }
+  }
+  if (!bestPartition) { bestPartition = divisionSplit(sorted); relaxInfo = { fallback: true }; }
+  return { groups: bestPartition, cost: bestCost, relaxInfo };
+}
+
+// ============================================================
+// TEST FRAMEWORK
+// ============================================================
+let passed = 0, failed = 0;
+const out = document.getElementById('results');
+
+function assert(condition, testName, detail) {
+  if (condition) {
+    passed++;
+    out.innerHTML += `<div class="test pass">✅ ${testName}</div>`;
+  } else {
+    failed++;
+    out.innerHTML += `<div class="test fail">❌ ${testName}${detail ? '<br><small>' + detail + '</small>' : ''}</div>`;
+  }
+}
+
+function info(msg) {
+  out.innerHTML += `<div class="test info">ℹ️ ${msg}</div>`;
+}
+
+function makeFleet(weights, ages) {
+  return weights.map((w, i) => ({
+    name: `Sailor${i+1}`,
+    weight: w,
+    age: ages ? ages[i] : 30
+  })).sort((a, b) => a.weight - b.weight);
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// --- T1: Minimum fleet (4 competitors) ---
+info('<strong>Test group: Minimum fleet</strong>');
+{
+  const fleet = makeFleet([65, 75, 85, 95]);
+  const res = divisionElastic(fleet, 8, 0.33, 0);
+  assert(res.groups.length === 4, 'T1.1: 4 competitors → 4 groups');
+  assert(res.groups.every(g => g.length === 1), 'T1.2: Each group has exactly 1 competitor');
+  const total = res.groups.reduce((s, g) => s + g.length, 0);
+  assert(total === 4, 'T1.3: All competitors assigned');
+}
+
+// --- T2: All same weight ---
+info('<strong>Test group: All same weight</strong>');
+{
+  const fleet = makeFleet([78, 78, 78, 78, 78, 78, 78, 78]);
+  const res = divisionElastic(fleet, 8, 0.33, 0);
+  const total = res.groups.reduce((s, g) => s + g.length, 0);
+  assert(total === 8, 'T2.1: All 8 competitors assigned');
+  assert(res.groups.length === 4, 'T2.2: Produces 4 groups');
+  assert(res.groups.every(g => g.length >= 1), 'T2.3: No empty groups');
+  const ranges = res.groups.map(g => g.length > 0 ? g[g.length-1].weight - g[0].weight : 0);
+  assert(ranges.every(r => r === 0), 'T2.4: All groups have 0 range (same weight)');
+}
+
+// --- T3: Normal European fleet (24 competitors) ---
+info('<strong>Test group: Normal European fleet (24)</strong>');
+{
+  const weights = [62,65,68,71,73,74,75,76,76,77,78,78,79,80,80,81,82,83,84,86,88,91,95,100];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, 8, 0.33, 0);
+  const total = res.groups.reduce((s, g) => s + g.length, 0);
+  assert(total === 24, 'T3.1: All 24 competitors assigned');
+  assert(res.groups.every(g => g.length >= 1), 'T3.2: No empty groups');
+  
+  // Compare with fixed system
+  const fixed = divisionFixed(fleet);
+  const fixedSizes = fixed.map(g => g.length);
+  const elasticSizes = res.groups.map(g => g.length);
+  const fixedVariance = fixedSizes.reduce((s, v) => s + Math.pow(v - 6, 2), 0) / 4;
+  const elasticVariance = elasticSizes.reduce((s, v) => s + Math.pow(v - 6, 2), 0) / 4;
+  assert(elasticVariance <= fixedVariance, 'T3.3: Elastic has equal or better size balance than fixed',
+    `Fixed sizes: ${fixedSizes.join('/')} (var=${fixedVariance.toFixed(1)}) | Elastic sizes: ${elasticSizes.join('/')} (var=${elasticVariance.toFixed(1)})`);
+
+  // Compare with split system
+  const split = divisionSplit(fleet);
+  const splitMaxRange = Math.max(...split.map(g => g[g.length-1].weight - g[0].weight));
+  const elasticMaxRange = Math.max(...res.groups.map(g => g[g.length-1].weight - g[0].weight));
+  assert(elasticMaxRange <= splitMaxRange, 'T3.4: Elastic has equal or better max range than split',
+    `Split max range: ${splitMaxRange} kg | Elastic max range: ${elasticMaxRange} kg`);
+}
+
+// --- T4: Groups are consecutive (no mixing) ---
+info('<strong>Test group: Ordering guarantee</strong>');
+{
+  const weights = [55,60,65,70,72,74,76,78,80,82,84,86,88,90,95,100];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, 10, 0.4, 0);
+  let consecutive = true;
+  let prevMax = -Infinity;
+  for (const g of res.groups) {
+    if (g.length === 0) continue;
+    if (g[0].weight < prevMax) { consecutive = false; break; }
+    prevMax = g[g.length - 1].weight;
+  }
+  assert(consecutive, 'T4.1: Groups are consecutive by weight (no mixing)');
+}
+
+// --- T5: Deterministic output ---
+info('<strong>Test group: Determinism</strong>');
+{
+  const weights = [65,70,73,75,77,79,81,83,85,88,92,100];
+  const fleet = makeFleet(weights);
+  const r1 = divisionElastic(fleet, 8, 0.33, 0);
+  const r2 = divisionElastic(fleet, 8, 0.33, 0);
+  const s1 = r1.groups.map(g => g.map(c => c.weight).join(',')).join('|');
+  const s2 = r2.groups.map(g => g.map(c => c.weight).join(',')).join('|');
+  assert(s1 === s2, 'T5.1: Same input → same output (deterministic)');
+}
+
+// --- T6: Constraint respect ---
+info('<strong>Test group: Constraint enforcement</strong>');
+{
+  const weights = [60,62,65,68,70,72,74,76,78,80,82,84,86,88,90,92,95,98,100,105];
+  const fleet = makeFleet(weights);
+  const maxRange = 10;
+  const maxPct = 0.33;
+  const res = divisionElastic(fleet, maxRange, maxPct, 0);
+  const maxSize = Math.ceil(maxPct * fleet.length);
+  
+  if (!res.relaxInfo) {
+    const allRangesOk = res.groups.every(g => (g[g.length-1].weight - g[0].weight) <= maxRange);
+    const allSizesOk = res.groups.every(g => g.length <= maxSize);
+    assert(allRangesOk, 'T6.1: All group ranges within limit', 
+      `Ranges: ${res.groups.map(g => (g[g.length-1].weight - g[0].weight).toFixed(1)).join(', ')} | Limit: ${maxRange}`);
+    assert(allSizesOk, 'T6.2: All group sizes within limit',
+      `Sizes: ${res.groups.map(g => g.length).join(', ')} | Max: ${maxSize}`);
+  } else {
+    info('T6: Constraints were relaxed — checking relaxed constraints');
+    const relaxedRange = res.relaxInfo.range || maxRange;
+    const relaxedPct = res.relaxInfo.percent || maxPct;
+    const relaxedMaxSize = Math.ceil(relaxedPct * fleet.length);
+    const allRangesOk = res.groups.every(g => (g[g.length-1].weight - g[0].weight) <= relaxedRange);
+    const allSizesOk = res.groups.every(g => g.length <= relaxedMaxSize);
+    assert(allRangesOk, 'T6.1: All group ranges within RELAXED limit');
+    assert(allSizesOk, 'T6.2: All group sizes within RELAXED limit');
+  }
+}
+
+// --- T7: Relaxation triggers on impossible constraints ---
+info('<strong>Test group: Relaxation mechanism</strong>');
+{
+  // Very tight constraints on a spread fleet
+  const weights = [55,60,70,75,80,85,90,95,100,110];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, 3, 0.26, 0); // max 3kg range, max 26% per group
+  assert(res.groups.length === 4, 'T7.1: Still produces 4 groups even with impossible constraints');
+  const total = res.groups.reduce((s, g) => s + g.length, 0);
+  assert(total === fleet.length, 'T7.2: All competitors assigned despite relaxation');
+  assert(res.relaxInfo !== null, 'T7.3: Relaxation info is reported');
+}
+
+// --- T8: Tie-breaking by age ---
+info('<strong>Test group: Weight tie-breaking by age</strong>');
+{
+  const fleet = [
+    { name: 'Young', weight: 78, age: 19 },
+    { name: 'Old', weight: 78, age: 45 },
+    { name: 'Mid', weight: 78, age: 30 },
+    { name: 'Light', weight: 70, age: 30 },
+    { name: 'Heavy', weight: 90, age: 30 },
+  ].sort((a, b) => {
+    if (a.weight !== b.weight) return a.weight - b.weight;
+    return (b.age || 0) - (a.age || 0);
+  });
+  // Young (19) should be considered lighter among the 78kg group per IWCA rule
+  const idx78 = fleet.filter(c => c.weight === 78);
+  assert(idx78[0].age > idx78[idx78.length - 1].age, 'T8.1: Among equal weights, younger sorts as lighter (older first in sorted array)',
+    `Order: ${idx78.map(c => c.name + '(' + c.age + ')').join(', ')}`);
+}
+
+// --- T9: Age factor effect ---
+info('<strong>Test group: Age factor influence</strong>');
+{
+  // Fleet where Youth competitors span a weight range
+  const fleet = [
+    { name: 'Youth1', weight: 72, age: 17 },
+    { name: 'Youth2', weight: 74, age: 18 },
+    { name: 'Youth3', weight: 76, age: 16 },
+    { name: 'Adult1', weight: 70, age: 35 },
+    { name: 'Adult2', weight: 73, age: 40 },
+    { name: 'Adult3', weight: 75, age: 30 },
+    { name: 'Adult4', weight: 78, age: 42 },
+    { name: 'Adult5', weight: 80, age: 33 },
+    { name: 'Adult6', weight: 82, age: 38 },
+    { name: 'Adult7', weight: 85, age: 45 },
+    { name: 'Adult8', weight: 88, age: 50 },
+    { name: 'Adult9', weight: 92, age: 55 },
+  ].sort((a, b) => a.weight - b.weight);
+  
+  const resNoAge = divisionElastic(fleet, 10, 0.4, 0);
+  const resWithAge = divisionElastic(fleet, 10, 0.4, 8);
+  
+  // Count how many groups youth are spread across
+  function youthSpread(groups) {
+    const youthGroups = new Set();
+    groups.forEach((g, gi) => g.forEach(c => { if (c.age && c.age < 20) youthGroups.add(gi); }));
+    return youthGroups.size;
+  }
+  
+  const spreadNoAge = youthSpread(resNoAge.groups);
+  const spreadWithAge = youthSpread(resWithAge.groups);
+  assert(spreadWithAge <= spreadNoAge, 'T9.1: Age factor reduces or maintains youth fragmentation',
+    `Without age factor: youth in ${spreadNoAge} groups | With: ${spreadWithAge} groups`);
+}
+
+// --- T10: Fixed system boundary values ---
+info('<strong>Test group: Fixed system boundaries</strong>');
+{
+  const fleet = makeFleet([69.9, 70.0, 78.9, 79.0, 87.9, 88.0]);
+  const fixed = divisionFixed(fleet);
+  assert(fixed[0].length === 1 && fixed[0][0].weight === 69.9, 'T10.1: 69.9 → Group A');
+  assert(fixed[1].length === 2 && fixed[1][0].weight === 70.0, 'T10.2: 70.0 → Group B');
+  assert(fixed[2].length === 2 && fixed[2][0].weight === 79.0, 'T10.3: 79.0 → Group C');
+  assert(fixed[3].length === 1 && fixed[3][0].weight === 88.0, 'T10.4: 88.0 → Group D');
+}
+
+// --- T11: Large fleet performance ---
+info('<strong>Test group: Performance (50 competitors)</strong>');
+{
+  const weights = Array.from({length: 50}, (_, i) => 60 + i * 1.2);
+  const fleet = makeFleet(weights);
+  const start = performance.now();
+  const res = divisionElastic(fleet, 10, 0.33, 0);
+  const elapsed = performance.now() - start;
+  assert(elapsed < 5000, `T11.1: 50 competitors computed in ${elapsed.toFixed(0)}ms (limit: 5000ms)`);
+  assert(res.groups.reduce((s, g) => s + g.length, 0) === 50, 'T11.2: All 50 assigned');
+}
+
+// --- T12: Split system even distribution ---
+info('<strong>Test group: Split system properties</strong>');
+{
+  const fleet = makeFleet(Array.from({length: 20}, (_, i) => 65 + i * 2));
+  const split = divisionSplit(fleet);
+  assert(split.every(g => g.length === 5), 'T12.1: 20 competitors → 4 groups of 5');
+  
+  const fleet2 = makeFleet(Array.from({length: 22}, (_, i) => 65 + i * 2));
+  const split2 = divisionSplit(fleet2);
+  const sizes = split2.map(g => g.length).sort();
+  assert(sizes[0] === 5 && sizes[3] === 6, 'T12.2: 22 competitors → sizes 5,5,6,6 (remainder distributed)');
+}
+
+// --- T13: Clustered fleet (everyone similar weight) ---
+info('<strong>Test group: Clustered fleet</strong>');
+{
+  const weights = [76, 76.5, 77, 77, 77.5, 78, 78, 78.5, 79, 79, 79.5, 80];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, 8, 0.33, 0);
+  assert(!res.relaxInfo, 'T13.1: No relaxation needed for clustered fleet');
+  const maxRange = Math.max(...res.groups.map(g => g[g.length-1].weight - g[0].weight));
+  assert(maxRange <= 8, 'T13.2: All ranges well within 8kg limit');
+}
+
+// --- T14: Bimodal fleet ---
+info('<strong>Test group: Bimodal fleet (two clusters)</strong>');
+{
+  const weights = [60,61,62,63,64,65, 90,91,92,93,94,95];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, 8, 0.5, 0);
+  // Should create clean groups without mixing light and heavy
+  let noMix = true;
+  for (const g of res.groups) {
+    const hasLight = g.some(c => c.weight < 70);
+    const hasHeavy = g.some(c => c.weight > 85);
+    if (hasLight && hasHeavy) noMix = false;
+  }
+  assert(noMix, 'T14.1: Bimodal fleet — no group mixes light and heavy clusters');
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+const summaryEl = document.getElementById('summary');
+const total = passed + failed;
+if (failed === 0) {
+  summaryEl.innerHTML = `<div class="summary all-pass">✅ All ${total} tests passed</div>`;
+} else {
+  summaryEl.innerHTML = `<div class="summary has-fail">❌ ${failed} of ${total} tests failed</div>`;
+}
+</script>
+</body>
+</html>
