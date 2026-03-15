@@ -47,77 +47,107 @@ function divisionFixed(sorted) {
   return groups;
 }
 
-function divisionSplit(sorted) {
+function divisionSplit(sorted, numGroups) {
+  numGroups = numGroups || 4;
   const n = sorted.length;
-  const base = Math.floor(n / 4);
-  const remainder = n % 4;
-  const sizes = [base, base, base, base];
+  const base = Math.floor(n / numGroups);
+  const remainder = n % numGroups;
+  const sizes = Array(numGroups).fill(base);
   for (let i = 0; i < remainder; i++) sizes[i]++;
   const groups = [];
   let idx = 0;
-  for (let g = 0; g < 4; g++) {
+  for (let g = 0; g < numGroups; g++) {
     groups.push(sorted.slice(idx, idx + sizes[g]));
     idx += sizes[g];
   }
   return groups;
 }
 
-function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
+function computeCost(groups, idealSize, sorted, ageFactor) {
   const n = sorted.length;
-  const maxSize = Math.ceil(maxPercent * n);
-  const idealSize = n / 4;
+  const sizes = groups.map(g => g.length);
+  const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / idealSize;
+  const ranges = groups.map(g => g.length > 0 ? g[g.length-1].weight - g[0].weight : 0);
+  const totalRange = sorted[n-1].weight - sorted[0].weight;
+  const rangeNorm = totalRange > 0 ? ranges.reduce((s,v) => s+v, 0) / totalRange : 0;
+  let agePenalty = 0;
+  if (ageFactor > 0) {
+    const catMap = {};
+    groups.forEach((g, gi) => {
+      g.forEach(c => {
+        const cat = getAgeCategory(c.age);
+        if (cat === 'open') return;
+        if (!catMap[cat]) catMap[cat] = new Set();
+        catMap[cat].add(gi);
+      });
+    });
+    const cats = Object.values(catMap);
+    if (cats.length > 0) agePenalty = cats.filter(s => s.size > 1).length / cats.length;
+  }
+  return 1.0 * sizeVar + 1.0 * rangeNorm + (ageFactor/10) * agePenalty;
+}
+
+function divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups) {
+  numGroups = numGroups || 4;
+  const n = sorted.length;
   let bestPartition = null;
   let bestCost = Infinity;
   let relaxInfo = null;
   let currentMaxRange = maxRange;
   let currentMaxPercent = maxPercent;
-  let currentMaxSize = maxSize;
   let attempts = 0;
   while (!bestPartition && attempts < 20) {
-    for (let i = 1; i < n - 2; i++) {
-      for (let j = i + 1; j < n - 1; j++) {
-        for (let k = j + 1; k < n; k++) {
-          const groups = [sorted.slice(0, i), sorted.slice(i, j), sorted.slice(j, k), sorted.slice(k, n)];
-          let valid = true;
-          for (const g of groups) {
-            if (g.length === 0 || g.length > currentMaxSize) { valid = false; break; }
-            const range = g[g.length-1].weight - g[0].weight;
-            if (range > currentMaxRange) { valid = false; break; }
-          }
-          if (!valid) continue;
-          const sizes = groups.map(g => g.length);
-          const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / idealSize;
-          const ranges = groups.map(g => g[g.length-1].weight - g[0].weight);
-          const totalRange = sorted[n-1].weight - sorted[0].weight;
-          const rangeNorm = totalRange > 0 ? ranges.reduce((s,v) => s+v, 0) / totalRange : 0;
-          let agePenalty = 0;
-          if (ageFactor > 0) {
-            const catMap = {};
-            groups.forEach((g, gi) => {
-              g.forEach(c => {
-                const cat = getAgeCategory(c.age);
-                if (cat === 'open') return;
-                if (!catMap[cat]) catMap[cat] = new Set();
-                catMap[cat].add(gi);
-              });
-            });
-            const cats = Object.values(catMap);
-            if (cats.length > 0) agePenalty = cats.filter(s => s.size > 1).length / cats.length;
-          }
-          const cost = 1.0 * sizeVar + 1.0 * rangeNorm + (ageFactor/10) * agePenalty;
-          if (cost < bestCost) { bestCost = cost; bestPartition = groups; }
-        }
+    const currentMaxSize = Math.ceil(currentMaxPercent * n);
+    const idealSize = n / numGroups;
+    function recurse(depth, startIdx, currentGroups) {
+      if (depth === numGroups - 1) {
+        const lastGroup = sorted.slice(startIdx, n);
+        if (lastGroup.length === 0 || lastGroup.length > currentMaxSize) return;
+        const range = lastGroup[lastGroup.length-1].weight - lastGroup[0].weight;
+        if (range > currentMaxRange) return;
+        const groups = [...currentGroups, lastGroup];
+        const cost = computeCost(groups, idealSize, sorted, ageFactor);
+        if (cost < bestCost) { bestCost = cost; bestPartition = groups; }
+        return;
+      }
+      const minRemaining = numGroups - depth - 1;
+      const maxEnd = n - minRemaining;
+      for (let cutIdx = startIdx + 1; cutIdx <= maxEnd; cutIdx++) {
+        const group = sorted.slice(startIdx, cutIdx);
+        if (group.length > currentMaxSize) break;
+        const range = group[group.length-1].weight - group[0].weight;
+        if (range > currentMaxRange) break;
+        recurse(depth + 1, cutIdx, [...currentGroups, group]);
       }
     }
+    recurse(0, 0, []);
     if (!bestPartition) {
       attempts++;
-      if (attempts % 2 === 1) { currentMaxPercent += 0.05; currentMaxSize = Math.ceil(currentMaxPercent * n); }
+      if (attempts % 2 === 1) { currentMaxPercent += 0.05; }
       else { currentMaxRange += 1; }
       relaxInfo = { range: currentMaxRange, percent: currentMaxPercent, origRange: maxRange, origPercent: maxPercent };
     }
   }
-  if (!bestPartition) { bestPartition = divisionSplit(sorted); relaxInfo = { fallback: true }; }
+  if (!bestPartition) { bestPartition = divisionSplit(sorted, numGroups); relaxInfo = { fallback: true }; }
   return { groups: bestPartition, cost: bestCost, relaxInfo };
+}
+
+function calculateQualityScore(groups, allSorted) {
+  const n = allSorted.length;
+  const numGroups = groups.length;
+  if (n === 0 || numGroups === 0) return { sizeScore: 0, rangeScore: 0, overall: 0 };
+  const idealSize = n / numGroups;
+  const sizes = groups.map(g => g.length);
+  const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / numGroups;
+  const maxPossibleVar = Math.pow(n - 1, 2) * (numGroups - 1) / numGroups;
+  const sizeScore = maxPossibleVar > 0 ? Math.round(100 * (1 - Math.min(1, sizeVar / maxPossibleVar))) : 100;
+  const totalFleetRange = allSorted[n-1].weight - allSorted[0].weight;
+  const groupRanges = groups.map(g => g.length > 1 ? g[g.length-1].weight - g[0].weight : 0);
+  const sumRanges = groupRanges.reduce((a, b) => a + b, 0);
+  const maxSumRanges = numGroups * totalFleetRange;
+  const rangeScore = maxSumRanges > 0 ? Math.round(100 * (1 - sumRanges / maxSumRanges)) : 100;
+  const overall = Math.round((sizeScore + rangeScore) / 2);
+  return { sizeScore, rangeScore, overall };
 }
 
 // ============================================================
@@ -528,6 +558,139 @@ info('<strong>Test group: CSV export format</strong>');
   const partial = { name: 'NoExtras', gender: null, sailNumber: null, nationality: null, age: null, weight: 70 };
   const csvPartial = `${partial.name},${partial.gender||''},${partial.sailNumber||''},${partial.nationality||''},${partial.age||''},${partial.weight}`;
   assert(csvPartial === 'NoExtras,,,,,70', 'T20.2: CSV export with null fields uses empty strings');
+}
+
+// --- T21: Variable number of groups (divisionSplit) ---
+info('<strong>Test group: Variable groups — Split</strong>');
+{
+  const fleet = makeFleet(Array.from({length: 20}, (_, i) => 65 + i * 2));
+  const s2 = divisionSplit(fleet, 2);
+  assert(s2.length === 2, 'T21.1: Split with numGroups=2 → 2 groups');
+  assert(s2.every(g => g.length === 10), 'T21.2: 20 competitors / 2 groups → 10 each');
+
+  const s3 = divisionSplit(fleet, 3);
+  assert(s3.length === 3, 'T21.3: Split with numGroups=3 → 3 groups');
+  assert(s3.reduce((s, g) => s + g.length, 0) === 20, 'T21.4: All 20 assigned with 3 groups');
+
+  const s5 = divisionSplit(fleet, 5);
+  assert(s5.length === 5, 'T21.5: Split with numGroups=5 → 5 groups');
+  assert(s5.every(g => g.length === 4), 'T21.6: 20 / 5 → 4 each');
+}
+
+// --- T22: Variable number of groups (divisionElastic) ---
+info('<strong>Test group: Variable groups — Elastic</strong>');
+{
+  const weights = [62,65,68,71,73,75,77,79,81,83,85,88];
+  const fleet = makeFleet(weights);
+
+  const r2 = divisionElastic(fleet, 12, 0.6, 0, 2);
+  assert(r2.groups.length === 2, 'T22.1: Elastic with 2 groups produces 2 groups');
+  assert(r2.groups.reduce((s, g) => s + g.length, 0) === 12, 'T22.2: All 12 assigned with 2 groups');
+
+  const r3 = divisionElastic(fleet, 10, 0.5, 0, 3);
+  assert(r3.groups.length === 3, 'T22.3: Elastic with 3 groups produces 3 groups');
+  assert(r3.groups.reduce((s, g) => s + g.length, 0) === 12, 'T22.4: All 12 assigned with 3 groups');
+
+  const r5 = divisionElastic(fleet, 10, 0.4, 0, 5);
+  assert(r5.groups.length === 5, 'T22.5: Elastic with 5 groups produces 5 groups');
+  assert(r5.groups.reduce((s, g) => s + g.length, 0) === 12, 'T22.6: All 12 assigned with 5 groups');
+
+  // Verify groups are consecutive
+  let consecutive = true;
+  let prevMax = -Infinity;
+  for (const g of r5.groups) {
+    if (g.length === 0) continue;
+    if (g[0].weight < prevMax) { consecutive = false; break; }
+    prevMax = g[g.length - 1].weight;
+  }
+  assert(consecutive, 'T22.7: 5-group elastic maintains consecutive weight ordering');
+}
+
+// --- T23: Performance with 5 groups ---
+info('<strong>Test group: Performance with 5 groups</strong>');
+{
+  const weights = Array.from({length: 60}, (_, i) => 60 + i * 0.8);
+  const fleet = makeFleet(weights);
+  const start = performance.now();
+  const res = divisionElastic(fleet, 8, 0.33, 0, 5);
+  const elapsed = performance.now() - start;
+  assert(elapsed < 10000, `T23.1: 60 competitors, 5 groups in ${elapsed.toFixed(0)}ms (limit: 10s)`);
+  assert(res.groups.length === 5, 'T23.2: Produces 5 groups');
+  assert(res.groups.reduce((s, g) => s + g.length, 0) === 60, 'T23.3: All 60 assigned');
+}
+
+// --- T24: Quality score ---
+info('<strong>Test group: Quality score</strong>');
+{
+  // Perfect balance: equal groups, minimal ranges
+  const fleet = makeFleet([70, 71, 72, 73, 80, 81, 82, 83]);
+  const perfectGroups = [fleet.slice(0, 2), fleet.slice(2, 4), fleet.slice(4, 6), fleet.slice(6, 8)];
+  const q = calculateQualityScore(perfectGroups, fleet);
+  assert(q.sizeScore === 100, 'T24.1: Equal group sizes → sizeScore = 100');
+  assert(q.overall >= 0 && q.overall <= 100, 'T24.2: Overall score is 0-100');
+  assert(q.rangeScore >= 0 && q.rangeScore <= 100, 'T24.3: Range score is 0-100');
+
+  // Bad balance: all in one group
+  const badGroups = [fleet, [], [], []];
+  const qBad = calculateQualityScore(badGroups.filter(g => g.length > 0), fleet);
+  assert(qBad.sizeScore < q.sizeScore || qBad.rangeScore < q.rangeScore, 'T24.4: Unbalanced division has lower score');
+
+  // Works with variable group counts
+  const fleet3 = makeFleet([65, 70, 75, 80, 85, 90]);
+  const groups3 = divisionSplit(fleet3, 3);
+  const q3 = calculateQualityScore(groups3, fleet3);
+  assert(q3.overall >= 0 && q3.overall <= 100, 'T24.5: Quality score works with 3 groups');
+
+  const groups5 = divisionSplit(fleet3, 5);
+  const q5 = calculateQualityScore(groups5, fleet3);
+  assert(q5.overall >= 0 && q5.overall <= 100, 'T24.6: Quality score works with 5 groups');
+}
+
+// --- T25: Gender separation logic ---
+info('<strong>Test group: Gender separation</strong>');
+{
+  const fleet = makeFleet(
+    [60, 65, 70, 75, 80, 85, 90, 95, 62, 67, 72, 77],
+    [25, 30, 35, 25, 30, 35, 25, 30, 25, 30, 35, 25],
+    { genders: ['M','M','M','M','M','M','M','M','F','F','F','F'] }
+  );
+  const males = fleet.filter(c => c.gender === 'M').sort((a,b) => a.weight - b.weight);
+  const females = fleet.filter(c => c.gender === 'F').sort((a,b) => a.weight - b.weight);
+
+  assert(males.length === 8, 'T25.1: Male sub-fleet has 8 competitors');
+  assert(females.length === 4, 'T25.2: Female sub-fleet has 4 competitors');
+
+  const maleRes = divisionElastic(males, 12, 0.5, 0, 4);
+  assert(maleRes.groups.length === 4, 'T25.3: Male fleet divides into 4 groups');
+  assert(maleRes.groups.reduce((s, g) => s + g.length, 0) === 8, 'T25.4: All males assigned');
+
+  // Female fleet with fewer competitors → reduced groups
+  const femaleGroups = Math.min(4, females.length);
+  const femaleRes = divisionElastic(females, 12, 0.6, 0, femaleGroups);
+  assert(femaleRes.groups.length === femaleGroups, 'T25.5: Female fleet divides into correct number of groups');
+  assert(femaleRes.groups.reduce((s, g) => s + g.length, 0) === 4, 'T25.6: All females assigned');
+
+  // Verify no gender mixing
+  const allMaleGroups = maleRes.groups.every(g => g.every(c => c.gender === 'M'));
+  const allFemaleGroups = femaleRes.groups.every(g => g.every(c => c.gender === 'F'));
+  assert(allMaleGroups, 'T25.7: Male groups contain only males');
+  assert(allFemaleGroups, 'T25.8: Female groups contain only females');
+}
+
+// --- T26: computeCost function ---
+info('<strong>Test group: computeCost function</strong>');
+{
+  const fleet = makeFleet([60, 65, 70, 75, 80, 85, 90, 95]);
+  const evenGroups = [fleet.slice(0,2), fleet.slice(2,4), fleet.slice(4,6), fleet.slice(6,8)];
+  const unevenGroups = [fleet.slice(0,1), fleet.slice(1,2), fleet.slice(2,3), fleet.slice(3,8)];
+
+  const costEven = computeCost(evenGroups, 2, fleet, 0);
+  const costUneven = computeCost(unevenGroups, 2, fleet, 0);
+  assert(costEven < costUneven, 'T26.1: Even groups have lower cost than uneven');
+
+  const costNoAge = computeCost(evenGroups, 2, fleet, 0);
+  const costWithAge = computeCost(evenGroups, 2, fleet, 5);
+  assert(costWithAge >= costNoAge, 'T26.2: Age factor adds penalty (cost increases or stays)');
 }
 
 // ============================================================

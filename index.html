@@ -99,6 +99,7 @@ body {
 }
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
+  .grid-2 > * { min-width: 0; overflow: hidden; }
 }
 
 /* --- CARDS --- */
@@ -282,6 +283,7 @@ tr:hover td { background: var(--sky-pale); }
 .group-card.group-b { background: #f0fdf4; border-color: #22c55e; }
 .group-card.group-c { background: #fefce8; border-color: #eab308; }
 .group-card.group-d { background: #fef2f2; border-color: #ef4444; }
+.group-card.group-e { background: #f5f3ff; border-color: #8b5cf6; }
 .group-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
 .group-card .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
 .group-card .stat-label { color: var(--gray-500); }
@@ -362,11 +364,66 @@ tr:hover td { background: var(--sky-pale); }
   .groups-grid { grid-template-columns: 1fr; }
 }
 
+/* --- QUALITY BADGE --- */
+.quality-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  margin-left: 6px; color: white;
+}
+.quality-badge.q-good { background: #16a34a; }
+.quality-badge.q-ok { background: #d97706; }
+.quality-badge.q-poor { background: #ef4444; }
+
+/* --- GENDER TOGGLE --- */
+.toggle-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.toggle-wrap label { font-size: 13px; font-weight: 500; }
+.toggle-switch {
+  position: relative; width: 40px; height: 22px; cursor: pointer;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider {
+  position: absolute; inset: 0; background: var(--gray-300); border-radius: 22px; transition: .2s;
+}
+.toggle-switch .slider::before {
+  content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%; transition: .2s;
+}
+.toggle-switch input:checked + .slider { background: var(--blue); }
+.toggle-switch input:checked + .slider::before { transform: translateX(18px); }
+
+/* --- TAB DISABLED --- */
+.system-tab.tab-disabled { opacity: 0.35; pointer-events: none; }
+
+/* --- GENDER SECTION HEADER --- */
+.gender-section-header {
+  font-size: 14px; font-weight: 600; color: var(--navy); margin: 16px 0 8px;
+  padding: 8px 12px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 6px;
+}
+.gender-section-header.male { background: #eff6ff; }
+.gender-section-header.female { background: #fdf2f8; }
+
 .actions-bar {
   display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;
   padding-top: 16px; border-top: 1px solid var(--gray-200);
   justify-content: space-between; align-items: center;
 }
+
+/* --- MANUAL ENTRY TOGGLE --- */
+.manual-toggle-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border: 1px dashed var(--gray-300); border-radius: var(--radius-sm);
+  background: var(--gray-50); color: var(--gray-500); font-family: var(--font);
+  font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s;
+  margin-bottom: 12px;
+}
+.manual-toggle-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--sky-pale); }
+.manual-toggle-btn .chevron { transition: transform .2s; font-size: 10px; }
+.manual-toggle-btn.open .chevron { transform: rotate(90deg); }
+.manual-entry-panel {
+  display: none; animation: slideDown .2s ease-out;
+}
+.manual-entry-panel.visible { display: block; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
@@ -441,41 +498,46 @@ tr:hover td { background: var(--sky-pale); }
           <p style="font-size:11px;color:var(--gray-400);margin-top:8px" data-i18n="genNote">Genera nombres y datos aleatorios realistas. Cada vez serán distintos.</p>
         </div>
         
-        <!-- Manual add -->
-        <div class="form-row no-print">
-          <div class="form-group" style="flex:2">
-            <label data-i18n="name">Nombre</label>
-            <input type="text" id="inputName" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:0.7">
-            <label data-i18n="gender">Sexo</label>
-            <select id="inputGender">
-              <option value="">—</option>
-              <option value="M">M</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="sailNumber">Vela</label>
-            <input type="text" id="inputSailNumber" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:1.5">
-            <label data-i18n="nationality">País</label>
-            <select id="inputNationality">
-              <option value="">—</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="age">Edad</label>
-            <input type="number" id="inputAge" min="5" max="99" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="weightKg">Peso (kg)</label>
-            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
-          </div>
-          <div class="form-group" style="flex:0;justify-content:flex-end">
-            <label>&nbsp;</label>
-            <button class="btn btn-primary" onclick="addCompetitor()" data-i18n="add">Añadir</button>
+        <!-- Manual add (collapsible) -->
+        <button class="manual-toggle-btn no-print" onclick="toggleManualEntry()" id="manualToggleBtn">
+          <span class="chevron">&#9654;</span> <span data-i18n="manualEntry">Añadir manualmente</span>
+        </button>
+        <div class="manual-entry-panel no-print" id="manualEntryPanel">
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label data-i18n="name">Nombre</label>
+              <input type="text" id="inputName" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:0.7">
+              <label data-i18n="gender">Sexo</label>
+              <select id="inputGender">
+                <option value="">—</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="sailNumber">Vela</label>
+              <input type="text" id="inputSailNumber" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:1.5">
+              <label data-i18n="nationality">País</label>
+              <select id="inputNationality">
+                <option value="">—</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="age">Edad</label>
+              <input type="number" id="inputAge" min="5" max="99" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="weightKg">Peso (kg)</label>
+              <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
+            </div>
+            <div class="form-group" style="flex:0;justify-content:flex-end">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary" onclick="addCompetitor()" data-i18n="add">Añadir</button>
+            </div>
           </div>
         </div>
 
@@ -512,6 +574,17 @@ tr:hover td { background: var(--sky-pale); }
       <div class="card-body">
         <div class="param-slider">
           <div class="param-label-wrap">
+            <label data-i18n="numGroups">N.º de grupos</label>
+            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGroups"></span></span>
+          </div>
+          <div class="param-row">
+            <input type="range" id="paramGroups" min="2" max="5" value="4" step="1" oninput="updateParamDisplay()">
+            <div class="param-value" id="paramGroupsVal">4</div>
+          </div>
+        </div>
+
+        <div class="param-slider">
+          <div class="param-label-wrap">
             <label data-i18n="maxRange">Rango máx. por grupo</label>
             <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipRange"></span></span>
           </div>
@@ -540,6 +613,17 @@ tr:hover td { background: var(--sky-pale); }
           <div class="param-row">
             <input type="range" id="paramAge" min="0" max="10" value="0" oninput="updateParamDisplay()">
             <div class="param-value" id="paramAgeVal">0</div>
+          </div>
+        </div>
+
+        <div class="toggle-wrap">
+          <label class="toggle-switch">
+            <input type="checkbox" id="paramSeparateGender">
+            <span class="slider"></span>
+          </label>
+          <div class="param-label-wrap">
+            <label data-i18n="separateGender" style="cursor:pointer" onclick="document.getElementById('paramSeparateGender').click()">Separar por sexo</label>
+            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGender"></span></span>
           </div>
         </div>
 
@@ -678,6 +762,20 @@ const i18n = {
     totalFleet: "Flota total",
     weightRange: "Rango total",
     median: "Mediana",
+    numGroups: "N.º de grupos",
+    tooltipGroups: "Número de grupos en los que dividir la flota (2 a 5). Con 4 grupos se activa también el sistema Fijo con los cortes reglamentarios IWCA (70/79/88 kg). Con otros valores, el sistema Fijo se deshabilita.",
+    separateGender: "Separar por sexo",
+    tooltipGender: "Cuando está activado, la flota se divide en hombres y mujeres y cada sub-flota se reparte en grupos de forma independiente. Los competidores sin sexo asignado se muestran como advertencia.",
+    groupE: "Grupo E",
+    qualityScore: "Puntuación",
+    sizeBalance: "Equilibrio de tamaño",
+    weightHomogeneity: "Homogeneidad de peso",
+    maleFleet: "Masculino",
+    femaleFleet: "Femenino",
+    noGenderWarning: "competidores sin sexo asignado (excluidos de la división por sexo)",
+    minCompetitorsN: "Se necesitan al menos {n} regatistas",
+    fixedDisabled: "El sistema Fijo solo está disponible con 4 grupos",
+    manualEntry: "Añadir manualmente",
   },
   en: {
     title: "Elastic Weight Division",
@@ -767,6 +865,20 @@ const i18n = {
     totalFleet: "Total fleet",
     weightRange: "Total range",
     median: "Median",
+    numGroups: "Number of groups",
+    tooltipGroups: "Number of groups to divide the fleet into (2 to 5). With 4 groups the Fixed system is also enabled with IWCA regulatory cuts (70/79/88 kg). With other values, the Fixed system is disabled.",
+    separateGender: "Separate by gender",
+    tooltipGender: "When enabled, the fleet is split into males and females and each sub-fleet is divided into groups independently. Competitors without assigned gender are shown as a warning.",
+    groupE: "Group E",
+    qualityScore: "Quality",
+    sizeBalance: "Size balance",
+    weightHomogeneity: "Weight homogeneity",
+    maleFleet: "Male",
+    femaleFleet: "Female",
+    noGenderWarning: "competitors without assigned gender (excluded from gender split)",
+    minCompetitorsN: "At least {n} competitors are required",
+    fixedDisabled: "Fixed system is only available with 4 groups",
+    manualEntry: "Add manually",
   }
 };
 
@@ -1007,6 +1119,13 @@ function toggleGenerator() {
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
+function toggleManualEntry() {
+  const panel = document.getElementById('manualEntryPanel');
+  const btn = document.getElementById('manualToggleBtn');
+  const isOpen = panel.classList.toggle('visible');
+  btn.classList.toggle('open', isOpen);
+}
+
 const FIRST_NAMES = [
   "Carlos","Marta","Luis","Ana","Borja","Pedro","Elena","Javier","David","Lucía",
   "Miguel","Rosa","Pablo","Sandra","Tomás","Laura","Andrés","Carmen","Diego","Raquel",
@@ -1197,25 +1316,57 @@ function divisionFixed(sorted) {
   return groups;
 }
 
-function divisionSplit(sorted) {
+function divisionSplit(sorted, numGroups) {
+  numGroups = numGroups || 4;
   const n = sorted.length;
-  const base = Math.floor(n / 4);
-  const remainder = n % 4;
-  const sizes = [base, base, base, base];
+  const base = Math.floor(n / numGroups);
+  const remainder = n % numGroups;
+  const sizes = Array(numGroups).fill(base);
   for (let i = 0; i < remainder; i++) sizes[i]++;
   const groups = [];
   let idx = 0;
-  for (let g = 0; g < 4; g++) {
+  for (let g = 0; g < numGroups; g++) {
     groups.push(sorted.slice(idx, idx + sizes[g]));
     idx += sizes[g];
   }
   return groups;
 }
 
-function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
+function computeCost(groups, idealSize, sorted, ageFactor) {
   const n = sorted.length;
-  const maxSize = Math.ceil(maxPercent * n);
-  const idealSize = n / 4;
+  const sizes = groups.map(g => g.length);
+  const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / idealSize;
+
+  const ranges = groups.map(g => g.length > 0 ? g[g.length-1].weight - g[0].weight : 0);
+  const totalRange = sorted[n-1].weight - sorted[0].weight;
+  const rangeNorm = totalRange > 0 ? ranges.reduce((s,v) => s+v, 0) / totalRange : 0;
+
+  let agePenalty = 0;
+  if (ageFactor > 0) {
+    const catMap = {};
+    groups.forEach((g, gi) => {
+      g.forEach(c => {
+        const cat = getAgeCategory(c.age);
+        if (cat === 'open') return;
+        if (!catMap[cat]) catMap[cat] = new Set();
+        catMap[cat].add(gi);
+      });
+    });
+    const cats = Object.values(catMap);
+    if (cats.length > 0) {
+      agePenalty = cats.filter(s => s.size > 1).length / cats.length;
+    }
+  }
+
+  const alpha = 1.0;
+  const beta = 1.0;
+  const gamma = ageFactor / 10;
+  return alpha * sizeVar + beta * rangeNorm + gamma * agePenalty;
+}
+
+function divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups) {
+  numGroups = numGroups || 4;
+  const n = sorted.length;
 
   let bestPartition = null;
   let bestCost = Infinity;
@@ -1223,72 +1374,45 @@ function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
 
   let currentMaxRange = maxRange;
   let currentMaxPercent = maxPercent;
-  let currentMaxSize = maxSize;
   let attempts = 0;
 
   while (!bestPartition && attempts < 20) {
-    for (let i = 1; i < n - 2; i++) {
-      for (let j = i + 1; j < n - 1; j++) {
-        for (let k = j + 1; k < n; k++) {
-          const groups = [
-            sorted.slice(0, i),
-            sorted.slice(i, j),
-            sorted.slice(j, k),
-            sorted.slice(k, n)
-          ];
+    const currentMaxSize = Math.ceil(currentMaxPercent * n);
+    const idealSize = n / numGroups;
 
-          // Check constraints
-          let valid = true;
-          for (const g of groups) {
-            if (g.length === 0 || g.length > currentMaxSize) { valid = false; break; }
-            const range = g[g.length-1].weight - g[0].weight;
-            if (range > currentMaxRange) { valid = false; break; }
-          }
-          if (!valid) continue;
-
-          // Compute cost
-          const sizes = groups.map(g => g.length);
-          const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / idealSize;
-
-          const ranges = groups.map(g => g[g.length-1].weight - g[0].weight);
-          const totalRange = sorted[n-1].weight - sorted[0].weight;
-          const rangeNorm = totalRange > 0 ? ranges.reduce((s,v) => s+v, 0) / totalRange : 0;
-
-          let agePenalty = 0;
-          if (ageFactor > 0) {
-            const catMap = {};
-            groups.forEach((g, gi) => {
-              g.forEach(c => {
-                const cat = getAgeCategory(c.age);
-                if (cat === 'open') return;
-                if (!catMap[cat]) catMap[cat] = new Set();
-                catMap[cat].add(gi);
-              });
-            });
-            const cats = Object.values(catMap);
-            if (cats.length > 0) {
-              agePenalty = cats.filter(s => s.size > 1).length / cats.length;
-            }
-          }
-
-          const alpha = 1.0;
-          const beta = 1.0;
-          const gamma = ageFactor / 10;
-          const cost = alpha * sizeVar + beta * rangeNorm + gamma * agePenalty;
-
-          if (cost < bestCost) {
-            bestCost = cost;
-            bestPartition = groups;
-          }
+    function recurse(depth, startIdx, currentGroups) {
+      if (depth === numGroups - 1) {
+        const lastGroup = sorted.slice(startIdx, n);
+        if (lastGroup.length === 0 || lastGroup.length > currentMaxSize) return;
+        const range = lastGroup[lastGroup.length-1].weight - lastGroup[0].weight;
+        if (range > currentMaxRange) return;
+        const groups = [...currentGroups, lastGroup];
+        const cost = computeCost(groups, idealSize, sorted, ageFactor);
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestPartition = groups;
         }
+        return;
+      }
+
+      const minRemaining = numGroups - depth - 1;
+      const maxEnd = n - minRemaining;
+
+      for (let cutIdx = startIdx + 1; cutIdx <= maxEnd; cutIdx++) {
+        const group = sorted.slice(startIdx, cutIdx);
+        if (group.length > currentMaxSize) break;
+        const range = group[group.length-1].weight - group[0].weight;
+        if (range > currentMaxRange) break;
+        recurse(depth + 1, cutIdx, [...currentGroups, group]);
       }
     }
+
+    recurse(0, 0, []);
 
     if (!bestPartition) {
       attempts++;
       if (attempts % 2 === 1) {
         currentMaxPercent += 0.05;
-        currentMaxSize = Math.ceil(currentMaxPercent * n);
       } else {
         currentMaxRange += 1;
       }
@@ -1298,7 +1422,7 @@ function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
 
   // Fallback: split
   if (!bestPartition) {
-    bestPartition = divisionSplit(sorted);
+    bestPartition = divisionSplit(sorted, numGroups);
     relaxInfo = { fallback: true };
   }
 
@@ -1309,38 +1433,100 @@ function divisionElastic(sorted, maxRange, maxPercent, ageFactor) {
 // RUN & RENDER
 // ============================================================
 function updateParamDisplay() {
+  document.getElementById('paramGroupsVal').textContent = document.getElementById('paramGroups').value;
   document.getElementById('paramRangeVal').textContent = document.getElementById('paramRange').value + ' kg';
   document.getElementById('paramPercentVal').textContent = document.getElementById('paramPercent').value + '%';
   document.getElementById('paramAgeVal').textContent = document.getElementById('paramAge').value;
+  // Disable Fixed tab when not 4 groups
+  const numGroups = parseInt(document.getElementById('paramGroups').value);
+  const fixedTab = document.querySelector('.tab-fixed');
+  if (fixedTab) fixedTab.classList.toggle('tab-disabled', numGroups !== 4);
 }
 
-function runAlgorithm() {
-  if (competitors.length < 4) {
-    alert(t('minCompetitors'));
-    return;
-  }
+function calculateQualityScore(groups, allSorted) {
+  const n = allSorted.length;
+  const numGroups = groups.length;
+  if (n === 0 || numGroups === 0) return { sizeScore: 0, rangeScore: 0, overall: 0 };
+  const idealSize = n / numGroups;
 
-  const sorted = [...competitors].sort((a,b) => {
-    if (a.weight !== b.weight) return a.weight - b.weight;
-    return (b.age || 0) - (a.age || 0); // younger = lighter per IWCA
-  });
+  // Size balance score (0-100)
+  const sizes = groups.map(g => g.length);
+  const sizeVar = sizes.reduce((s, v) => s + Math.pow(v - idealSize, 2), 0) / numGroups;
+  const maxPossibleVar = Math.pow(n - 1, 2) * (numGroups - 1) / numGroups;
+  const sizeScore = maxPossibleVar > 0 ? Math.round(100 * (1 - Math.min(1, sizeVar / maxPossibleVar))) : 100;
 
-  const maxRange = parseInt(document.getElementById('paramRange').value);
-  const maxPercent = parseInt(document.getElementById('paramPercent').value) / 100;
-  const ageFactor = parseInt(document.getElementById('paramAge').value);
+  // Range score (0-100)
+  const totalFleetRange = allSorted[n-1].weight - allSorted[0].weight;
+  const groupRanges = groups.map(g => g.length > 1 ? g[g.length-1].weight - g[0].weight : 0);
+  const sumRanges = groupRanges.reduce((a, b) => a + b, 0);
+  const maxSumRanges = numGroups * totalFleetRange;
+  const rangeScore = maxSumRanges > 0 ? Math.round(100 * (1 - sumRanges / maxSumRanges)) : 100;
 
-  const fixedGroups = divisionFixed(sorted);
-  const splitGroups = divisionSplit(sorted);
-  const elasticResult = divisionElastic(sorted, maxRange, maxPercent, ageFactor);
+  const overall = Math.round((sizeScore + rangeScore) / 2);
+  return { sizeScore, rangeScore, overall };
+}
 
-  lastResults = {
+function qualityClass(score) {
+  if (score >= 70) return 'q-good';
+  if (score >= 40) return 'q-ok';
+  return 'q-poor';
+}
+
+function runAlgorithmOnFleet(sorted, numGroups, maxRange, maxPercent, ageFactor) {
+  const fixedGroups = numGroups === 4 ? divisionFixed(sorted) : null;
+  const splitGroups = divisionSplit(sorted, numGroups);
+  const elasticResult = divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups);
+
+  return {
     fixed: fixedGroups,
     split: splitGroups,
     elastic: elasticResult.groups,
     elasticCost: elasticResult.cost,
     relaxInfo: elasticResult.relaxInfo,
-    params: { maxRange, maxPercent, ageFactor }
+    sorted: sorted,
+    params: { maxRange, maxPercent, ageFactor, numGroups }
   };
+}
+
+function runAlgorithm() {
+  const numGroups = parseInt(document.getElementById('paramGroups').value);
+  if (competitors.length < numGroups) {
+    alert(t('minCompetitorsN').replace('{n}', numGroups));
+    return;
+  }
+
+  const sorted = [...competitors].sort((a,b) => {
+    if (a.weight !== b.weight) return a.weight - b.weight;
+    return (b.age || 0) - (a.age || 0);
+  });
+
+  const maxRange = parseInt(document.getElementById('paramRange').value);
+  const maxPercent = parseInt(document.getElementById('paramPercent').value) / 100;
+  const ageFactor = parseInt(document.getElementById('paramAge').value);
+  const separateGender = document.getElementById('paramSeparateGender').checked;
+
+  if (separateGender) {
+    const males = sorted.filter(c => c.gender === 'M');
+    const females = sorted.filter(c => c.gender === 'F');
+    const noGender = sorted.filter(c => !c.gender || (c.gender !== 'M' && c.gender !== 'F'));
+
+    const maleGroups = males.length >= 2 ? Math.min(numGroups, males.length) : males.length;
+    const femaleGroups = females.length >= 2 ? Math.min(numGroups, females.length) : females.length;
+
+    const maleResults = males.length >= 2 ? runAlgorithmOnFleet(males, maleGroups, maxRange, maxPercent, ageFactor) : null;
+    const femaleResults = females.length >= 2 ? runAlgorithmOnFleet(females, femaleGroups, maxRange, maxPercent, ageFactor) : null;
+
+    lastResults = {
+      separateGender: true,
+      male: maleResults,
+      female: femaleResults,
+      noGender: noGender,
+      params: { maxRange, maxPercent, ageFactor, numGroups }
+    };
+  } else {
+    lastResults = runAlgorithmOnFleet(sorted, numGroups, maxRange, maxPercent, ageFactor);
+    lastResults.separateGender = false;
+  }
 
   document.getElementById('resultsSection').style.display = 'block';
   renderResults(lastResults);
@@ -1358,14 +1544,16 @@ function groupStats(groups) {
   }));
 }
 
+const GROUP_LABELS = ['groupA','groupB','groupC','groupD','groupE'];
+const GROUP_CLASSES = ['group-a','group-b','group-c','group-d','group-e'];
+const GROUP_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6'];
+
 function renderGroupCards(groups, systemName) {
   const stats = groupStats(groups);
-  const labels = ['groupA','groupB','groupC','groupD'];
-  const classes = ['group-a','group-b','group-c','group-d'];
-  
+
   return `<div class="groups-grid">${stats.map((s, i) => `
-    <div class="group-card ${classes[i]}">
-      <h3>${t(labels[i])}</h3>
+    <div class="group-card ${GROUP_CLASSES[i] || 'group-a'}">
+      <h3>${t(GROUP_LABELS[i] || 'groupA')}</h3>
       <div class="stat"><span class="stat-label">${t('nCompetitors')}</span><span class="stat-value">${s.count}</span></div>
       <div class="stat"><span class="stat-label">${t('range')}</span><span class="stat-value">${s.range.toFixed(1)} kg</span></div>
       <div class="stat"><span class="stat-label">${t('minWeight')}</span><span class="stat-value">${s.count ? s.min.toFixed(1) : '—'} kg</span></div>
@@ -1376,20 +1564,38 @@ function renderGroupCards(groups, systemName) {
   `).join('')}</div>`;
 }
 
-function calcMetrics(groups) {
+function calcMetrics(groups, totalCompetitors) {
   const stats = groupStats(groups);
   const sizes = stats.map(s => s.count);
   const ranges = stats.map(s => s.range);
-  const idealSize = competitors.length / 4;
+  const total = totalCompetitors || sizes.reduce((a,b) => a+b, 0);
+  const numG = groups.length;
+  const idealSize = total / numG;
   return {
     sizes,
     maxRange: Math.max(...ranges),
     totalRange: ranges.reduce((a,b) => a+b, 0),
-    sizeVariance: (sizes.reduce((s,v) => s + Math.pow(v - idealSize, 2), 0) / 4).toFixed(2)
+    sizeVariance: (sizes.reduce((s,v) => s + Math.pow(v - idealSize, 2), 0) / numG).toFixed(2)
   };
 }
 
-function renderResults(res) {
+function renderQualityChips(groups, sorted) {
+  const q = calculateQualityScore(groups, sorted);
+  return `<div class="metrics-bar" style="margin-bottom:12px">
+    <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('qualityScore')}: <span class="val quality-badge ${qualityClass(q.overall)}">${q.overall}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('sizeBalance')}: <span class="val">${q.sizeScore}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('weightHomogeneity')}: <span class="val">${q.rangeScore}</span></div>
+  </div>`;
+}
+
+function renderSingleFleetResults(res, sorted) {
+  const numGroups = res.params.numGroups;
+  const hasFixed = res.fixed !== null;
+
+  // Update tab visibility
+  const fixedTab = document.querySelector('.tab-fixed');
+  if (fixedTab) fixedTab.classList.toggle('tab-disabled', !hasFixed);
+
   // Elastic tab
   let elasticHTML = '';
   if (res.relaxInfo && !res.relaxInfo.fallback) {
@@ -1401,68 +1607,55 @@ function renderResults(res) {
   } else if (!res.relaxInfo) {
     elasticHTML += `<div class="notice notice-success">${t('noRelax')}</div>`;
   }
+  elasticHTML += renderQualityChips(res.elastic, sorted);
   elasticHTML += renderGroupCards(res.elastic, 'elastic');
   document.getElementById('tab-elastic').setAttribute('data-print-title', t('tabElastic'));
   document.getElementById('tab-elastic').innerHTML = elasticHTML;
 
   // Fixed tab
   document.getElementById('tab-fixed').setAttribute('data-print-title', t('tabFixed'));
-  document.getElementById('tab-fixed').innerHTML = renderGroupCards(res.fixed, 'fixed');
+  if (hasFixed) {
+    let fixedHTML = renderQualityChips(res.fixed, sorted);
+    fixedHTML += renderGroupCards(res.fixed, 'fixed');
+    document.getElementById('tab-fixed').innerHTML = fixedHTML;
+  } else {
+    document.getElementById('tab-fixed').innerHTML = `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
+  }
 
   // Split tab
+  let splitHTML = renderQualityChips(res.split, sorted);
+  splitHTML += renderGroupCards(res.split, 'split');
   document.getElementById('tab-split').setAttribute('data-print-title', t('tabSplit'));
-  document.getElementById('tab-split').innerHTML = renderGroupCards(res.split, 'split');
+  document.getElementById('tab-split').innerHTML = splitHTML;
 
   // Compare tab
-  const mFixed = calcMetrics(res.fixed);
-  const mSplit = calcMetrics(res.split);
-  const mElastic = calcMetrics(res.elastic);
+  const systems = [];
+  if (hasFixed) systems.push({ key: 'fixed', label: t('fixed'), groups: res.fixed });
+  systems.push({ key: 'split', label: t('split'), groups: res.split });
+  systems.push({ key: 'elastic', label: t('elastic'), groups: res.elastic });
+
+  const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, sorted) }));
 
   function best(vals, lower=true) {
     const target = lower ? Math.min(...vals) : Math.max(...vals);
     return vals.map(v => v === target ? 'highlight' : '');
   }
 
-  const bMaxRange = best([mFixed.maxRange, mSplit.maxRange, mElastic.maxRange]);
-  const bTotalRange = best([mFixed.totalRange, mSplit.totalRange, mElastic.totalRange]);
-  const bVariance = best([parseFloat(mFixed.sizeVariance), parseFloat(mSplit.sizeVariance), parseFloat(mElastic.sizeVariance)]);
+  const bMaxRange = best(metrics.map(m => m.m.maxRange));
+  const bTotalRange = best(metrics.map(m => m.m.totalRange));
+  const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
+  const bQuality = best(metrics.map(m => m.q.overall), false);
 
   document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
   document.getElementById('tab-compare').innerHTML = `
     <table class="compare-table">
-      <thead>
-        <tr>
-          <th>${t('aspect')}</th>
-          <th>${t('fixed')}</th>
-          <th>${t('split')}</th>
-          <th>${t('elastic')}</th>
-        </tr>
-      </thead>
+      <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
       <tbody>
-        <tr>
-          <td><strong>${t('groupSizes')}</strong></td>
-          <td>${mFixed.sizes.join(' / ')}</td>
-          <td>${mSplit.sizes.join(' / ')}</td>
-          <td>${mElastic.sizes.join(' / ')}</td>
-        </tr>
-        <tr>
-          <td><strong>${t('maxInternalRange')}</strong></td>
-          <td class="${bMaxRange[0]}">${mFixed.maxRange.toFixed(1)} kg</td>
-          <td class="${bMaxRange[1]}">${mSplit.maxRange.toFixed(1)} kg</td>
-          <td class="${bMaxRange[2]}">${mElastic.maxRange.toFixed(1)} kg</td>
-        </tr>
-        <tr>
-          <td><strong>${t('totalRangeSum')}</strong></td>
-          <td class="${bTotalRange[0]}">${mFixed.totalRange.toFixed(1)} kg</td>
-          <td class="${bTotalRange[1]}">${mSplit.totalRange.toFixed(1)} kg</td>
-          <td class="${bTotalRange[2]}">${mElastic.totalRange.toFixed(1)} kg</td>
-        </tr>
-        <tr>
-          <td><strong>${t('sizeVariance')}</strong></td>
-          <td class="${bVariance[0]}">${mFixed.sizeVariance}</td>
-          <td class="${bVariance[1]}">${mSplit.sizeVariance}</td>
-          <td class="${bVariance[2]}">${mElastic.sizeVariance}</td>
-        </tr>
+        <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
+        <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
+        <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
+        <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
+        <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
       </tbody>
     </table>
     <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
@@ -1470,16 +1663,163 @@ function renderResults(res) {
     </p>
   `;
 
+  // Update tab badges
+  const elasticQ = calculateQualityScore(res.elastic, sorted);
+  const elasticTabBtn = document.querySelector('.tab-elastic');
+  if (elasticTabBtn) elasticTabBtn.innerHTML = `${t('tabElastic')} <span class="quality-badge ${qualityClass(elasticQ.overall)}">${elasticQ.overall}</span>`;
+  if (hasFixed) {
+    const fixedQ = calculateQualityScore(res.fixed, sorted);
+    const fixedTabBtn = document.querySelector('.tab-fixed');
+    if (fixedTabBtn) fixedTabBtn.innerHTML = `${t('tabFixed')} <span class="quality-badge ${qualityClass(fixedQ.overall)}">${fixedQ.overall}</span>`;
+  }
+  const splitQ = calculateQualityScore(res.split, sorted);
+  const splitTabBtn = document.querySelector('.tab-split');
+  if (splitTabBtn) splitTabBtn.innerHTML = `${t('tabSplit')} <span class="quality-badge ${qualityClass(splitQ.overall)}">${splitQ.overall}</span>`;
+
   // Chart tab
   document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
-  renderChart(res);
+  renderChart(res, sorted);
+}
+
+function renderGenderFleetSection(genderRes, sorted, genderLabel, genderClass, systemKey) {
+  let html = `<div class="gender-section-header ${genderClass}">${genderLabel} (${sorted.length})</div>`;
+  if (systemKey === 'elastic') {
+    if (genderRes.relaxInfo && !genderRes.relaxInfo.fallback) {
+      html += `<div class="notice notice-warn">${t('relaxed')}<br>
+        ${genderRes.relaxInfo.range > genderRes.params.maxRange ? t('relaxRange') + ' ' + genderRes.relaxInfo.range + ' kg. ' : ''}
+        ${genderRes.relaxInfo.percent > genderRes.params.maxPercent ? t('relaxPercent') + ' ' + Math.round(genderRes.relaxInfo.percent*100) + '%. ' : ''}
+      </div>`;
+    } else if (!genderRes.relaxInfo) {
+      html += `<div class="notice notice-success">${t('noRelax')}</div>`;
+    }
+  }
+  const groups = genderRes[systemKey];
+  if (groups) {
+    html += renderQualityChips(groups, sorted);
+    html += renderGroupCards(groups, systemKey);
+  }
+  return html;
+}
+
+function renderResults(res) {
+  if (!res.separateGender) {
+    const sorted = [...competitors].sort((a,b) => {
+      if (a.weight !== b.weight) return a.weight - b.weight;
+      return (b.age || 0) - (a.age || 0);
+    });
+    renderSingleFleetResults(res, sorted);
+  } else {
+    // Gender-separated mode
+    const hasFixed = res.params.numGroups === 4;
+    const fixedTab = document.querySelector('.tab-fixed');
+    if (fixedTab) fixedTab.classList.toggle('tab-disabled', !hasFixed);
+
+    const genders = [];
+    if (res.male) genders.push({ res: res.male, label: t('maleFleet'), cls: 'male' });
+    if (res.female) genders.push({ res: res.female, label: t('femaleFleet'), cls: 'female' });
+
+    const warnMsg = (res.noGender && res.noGender.length > 0)
+      ? `<div class="notice notice-warn">${res.noGender.length} ${t('noGenderWarning')}</div>` : '';
+
+    // Build HTML for each system tab
+    const systemKeys = ['elastic', 'split'];
+    if (hasFixed) systemKeys.push('fixed');
+
+    const tabContent = {};
+    systemKeys.forEach(key => {
+      let html = warnMsg;
+      genders.forEach(g => {
+        html += renderGenderFleetSection(g.res, g.res.sorted || [], g.label, g.cls, key);
+      });
+      tabContent[key] = html;
+    });
+
+    document.getElementById('tab-elastic').setAttribute('data-print-title', t('tabElastic'));
+    document.getElementById('tab-elastic').innerHTML = tabContent.elastic || '';
+    document.getElementById('tab-split').setAttribute('data-print-title', t('tabSplit'));
+    document.getElementById('tab-split').innerHTML = tabContent.split || '';
+    document.getElementById('tab-fixed').setAttribute('data-print-title', t('tabFixed'));
+    document.getElementById('tab-fixed').innerHTML = hasFixed ? tabContent.fixed : `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
+
+    // Compare tab — aggregate metrics across genders per system
+    const allSorted = [...(res.male ? res.male.sorted : []), ...(res.female ? res.female.sorted : [])].sort((a,b) => a.weight - b.weight);
+    const systems = [];
+    systemKeys.forEach(key => {
+      const allGroups = [];
+      genders.forEach(g => { if (g.res[key]) allGroups.push(...g.res[key]); });
+      if (allGroups.length) {
+        const labelMap = { elastic: t('elastic'), split: t('split'), fixed: t('fixed') };
+        systems.push({ key, label: labelMap[key], groups: allGroups });
+      }
+    });
+
+    const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, allSorted) }));
+
+    function best(vals, lower=true) {
+      const target = lower ? Math.min(...vals) : Math.max(...vals);
+      return vals.map(v => v === target ? 'highlight' : '');
+    }
+
+    const bMaxRange = best(metrics.map(m => m.m.maxRange));
+    const bTotalRange = best(metrics.map(m => m.m.totalRange));
+    const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
+    const bQuality = best(metrics.map(m => m.q.overall), false);
+
+    document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
+    document.getElementById('tab-compare').innerHTML = `
+      <table class="compare-table">
+        <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
+          <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
+          <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
+          <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
+          <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
+        ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
+      </p>
+    `;
+
+    // Tab badges with quality scores
+    genders.forEach(g => {
+      ['elastic', 'split'].forEach(key => {
+        if (g.res[key]) {
+          // Use first gender's scores for badges (combined would be misleading)
+        }
+      });
+    });
+    // Combined quality for tab badges
+    systemKeys.forEach(key => {
+      const allGroups = [];
+      genders.forEach(g => { if (g.res[key]) allGroups.push(...g.res[key]); });
+      if (allGroups.length) {
+        const q = calculateQualityScore(allGroups, allSorted);
+        const tabMap = { elastic: '.tab-elastic', split: '.tab-split', fixed: '.tab-fixed' };
+        const labelMap = { elastic: t('tabElastic'), split: t('tabSplit'), fixed: t('tabFixed') };
+        const btn = document.querySelector(tabMap[key]);
+        if (btn) btn.innerHTML = `${labelMap[key]} <span class="quality-badge ${qualityClass(q.overall)}">${q.overall}</span>`;
+      }
+    });
+
+    // Chart tab — build combined res for chart
+    document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
+    const combinedRes = { elastic: [], split: [], fixed: hasFixed ? [] : null };
+    genders.forEach(g => {
+      if (g.res.elastic) combinedRes.elastic.push(...g.res.elastic);
+      if (g.res.split) combinedRes.split.push(...g.res.split);
+      if (hasFixed && g.res.fixed) combinedRes.fixed.push(...g.res.fixed);
+    });
+    renderChart(combinedRes, allSorted);
+  }
 }
 
 // ============================================================
 // DISTRIBUTION CHART
 // ============================================================
-function renderChart(res) {
-  const sorted = [...competitors].sort((a,b) => a.weight - b.weight);
+function renderChart(res, sorted) {
+  if (!sorted) sorted = [...competitors].sort((a,b) => a.weight - b.weight);
   const minW = sorted[0].weight;
   const maxW = sorted[sorted.length - 1].weight;
   const padding = (maxW - minW) * 0.05 || 2;
@@ -1512,12 +1852,12 @@ function renderChart(res) {
 
   const systems = [
     { name: t('elastic'), groups: res.elastic, color: '#0d9488', bg: '#ccfbf1' },
-    { name: t('fixed'), groups: res.fixed, color: '#d97706', bg: '#fef3c7' },
-    { name: t('split'), groups: res.split, color: '#2563eb', bg: '#dbeafe' },
   ];
+  if (res.fixed) systems.push({ name: t('fixed'), groups: res.fixed, color: '#d97706', bg: '#fef3c7' });
+  systems.push({ name: t('split'), groups: res.split, color: '#2563eb', bg: '#dbeafe' });
 
   const svgH = topMargin + systems.length * rowH + botMargin;
-  const groupColors = ['#3b82f6', '#22c55e', '#eab308', '#ef4444'];
+  const groupColors = GROUP_COLORS;
 
   // Fleet summary chips
   const avgW = (sorted.reduce((s,c) => s + c.weight, 0) / sorted.length).toFixed(1);
@@ -1595,8 +1935,8 @@ function renderChart(res) {
     html += `<text x="${leftM - 8}" y="${y + rowH / 2 + 1}" text-anchor="end" fill="${sys.color}" font-size="11" font-weight="600">${sys.name}</text>`;
   });
 
-  // Fixed weight lines (70, 79, 88) as reference
-  [70, 79, 88].forEach(w => {
+  // Fixed weight lines (70, 79, 88) as reference — only when Fixed is active
+  if (res.fixed) [70, 79, 88].forEach(w => {
     if (w >= wMin && w <= wMax) {
       const x = xPos(w);
       html += `<line x1="${x}" y1="${topMargin + systems.length * rowH + 2}" x2="${x}" y2="${topMargin + systems.length * rowH + 12}" stroke="#d97706" stroke-width="1.5"/>`;
@@ -1616,26 +1956,35 @@ function renderChart(res) {
 // ============================================================
 function exportGroupsCSV() {
   if (!lastResults) return;
-  const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
-  
+
   let csv = currentLang === 'es'
     ? 'Grupo,Nombre,Sexo,Vela,País,Clase,Peso (kg),Sistema\n'
     : 'Group,Name,Gender,Sail,Country,Class,Weight (kg),System\n';
 
-  const systems = [
-    { name: t('elastic'), groups: lastResults.elastic },
-    { name: t('fixed'), groups: lastResults.fixed },
-    { name: t('split'), groups: lastResults.split }
-  ];
-
-  systems.forEach(sys => {
-    sys.groups.forEach((group, gi) => {
+  function appendGroups(groups, sysName, prefix) {
+    const groupNames = GROUP_LABELS.slice(0, groups.length).map(l => (prefix ? prefix + ' ' : '') + t(l));
+    groups.forEach((group, gi) => {
       group.forEach(c => {
-        csv += `${groupNames[gi]},${c.name},${c.gender || ''},${c.sailNumber || ''},${c.nationality || ''},${displayAgeClass(c.age)},${c.weight},${sys.name}\n`;
+        csv += `${groupNames[gi]},${c.name},${c.gender || ''},${c.sailNumber || ''},${c.nationality || ''},${displayAgeClass(c.age)},${c.weight},${sysName}\n`;
       });
     });
     csv += '\n';
-  });
+  }
+
+  if (lastResults.separateGender) {
+    if (lastResults.male) {
+      appendGroups(lastResults.male.elastic, t('elastic'), t('maleFleet'));
+      appendGroups(lastResults.male.split, t('split'), t('maleFleet'));
+    }
+    if (lastResults.female) {
+      appendGroups(lastResults.female.elastic, t('elastic'), t('femaleFleet'));
+      appendGroups(lastResults.female.split, t('split'), t('femaleFleet'));
+    }
+  } else {
+    appendGroups(lastResults.elastic, t('elastic'), '');
+    if (lastResults.fixed) appendGroups(lastResults.fixed, t('fixed'), '');
+    appendGroups(lastResults.split, t('split'), '');
+  }
 
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1652,9 +2001,11 @@ function showTab(tab) {
 }
 
 function updateTooltips() {
+  document.getElementById('tooltipGroups').textContent = t('tooltipGroups');
   document.getElementById('tooltipRange').textContent = t('tooltipRange');
   document.getElementById('tooltipPercent').textContent = t('tooltipPercent');
   document.getElementById('tooltipAge').textContent = t('tooltipAge');
+  document.getElementById('tooltipGender').textContent = t('tooltipGender');
 }
 
 // Init
