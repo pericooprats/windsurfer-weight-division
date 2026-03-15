@@ -415,21 +415,29 @@ tr:hover td { background: var(--sky-pale); }
             <label data-i18n="name">Nombre</label>
             <input type="text" id="inputName" placeholder="—">
           </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="weightKg">Peso (kg)</label>
-            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
+          <div class="form-group" style="flex:0.7">
+            <label data-i18n="gender">Sexo</label>
+            <select id="inputGender">
+              <option value="">—</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
           </div>
           <div class="form-group" style="flex:1">
-            <label data-i18n="age">Edad</label>
-            <input type="number" id="inputAge" min="5" max="99" placeholder="—">
+            <label data-i18n="sailNumber">Vela</label>
+            <input type="text" id="inputSailNumber" placeholder="—">
           </div>
           <div class="form-group" style="flex:1">
             <label data-i18n="nationality">País</label>
             <input type="text" id="inputNationality" maxlength="3" placeholder="ESP" style="text-transform:uppercase">
           </div>
           <div class="form-group" style="flex:1">
-            <label data-i18n="sailNumber">Vela</label>
-            <input type="text" id="inputSailNumber" placeholder="—">
+            <label data-i18n="age">Edad</label>
+            <input type="number" id="inputAge" min="5" max="99" placeholder="—">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label data-i18n="weightKg">Peso (kg)</label>
+            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
           </div>
           <div class="form-group" style="flex:0;justify-content:flex-end">
             <label>&nbsp;</label>
@@ -443,11 +451,12 @@ tr:hover td { background: var(--sky-pale); }
             <thead>
               <tr>
                 <th>#</th>
-                <th data-i18n="nationality">País</th>
-                <th data-i18n="sailNumber">Vela</th>
                 <th data-i18n="name">Nombre</th>
+                <th data-i18n="gender">Sexo</th>
+                <th data-i18n="sailNumber">Vela</th>
+                <th data-i18n="nationality">País</th>
+                <th data-i18n="ageClass">Clase</th>
                 <th data-i18n="weightKg">Peso (kg)</th>
-                <th data-i18n="age">Edad</th>
                 <th class="no-print"></th>
               </tr>
             </thead>
@@ -558,12 +567,14 @@ const i18n = {
     genNote: "Genera nombres y datos aleatorios realistas. Cada vez serán distintos.",
     clearAll: "Borrar todo",
     csvDrop: "Arrastra un CSV aquí o haz clic para seleccionar",
-    csvFormat: "Formato: nombre, peso (kg), edad, nacionalidad, n.º vela (opcionales)",
+    csvFormat: "Formato: nombre, sexo, vela, país, edad, peso (kg)",
     name: "Nombre",
+    gender: "Sexo",
+    sailNumber: "Vela",
+    nationality: "País",
+    ageClass: "Clase",
     weightKg: "Peso (kg)",
     age: "Edad",
-    nationality: "País",
-    sailNumber: "Vela",
     add: "Añadir",
     total: "Total",
     exportCSV: "Exportar CSV",
@@ -642,12 +653,14 @@ const i18n = {
     genNote: "Generates realistic random names and data. Different each time.",
     clearAll: "Clear all",
     csvDrop: "Drag a CSV here or click to select",
-    csvFormat: "Format: name, weight (kg), age, nationality, sail no. (optional)",
+    csvFormat: "Format: name, gender, sail, country, age, weight (kg)",
     name: "Name",
+    gender: "Gender",
+    sailNumber: "Sail",
+    nationality: "Country",
+    ageClass: "Class",
     weightKg: "Weight (kg)",
     age: "Age",
-    nationality: "Country",
-    sailNumber: "Sail",
     add: "Add",
     total: "Total",
     exportCSV: "Export CSV",
@@ -743,21 +756,23 @@ function countryFlag(code) {
   return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
-function addCompetitor(name, weight, age, nationality, sailNumber) {
+function addCompetitor(name, gender, sailNumber, nationality, age, weight) {
   if (!name) {
     name = document.getElementById('inputName').value.trim();
-    weight = parseFloat(document.getElementById('inputWeight').value);
-    age = document.getElementById('inputAge').value ? parseInt(document.getElementById('inputAge').value) : null;
-    nationality = document.getElementById('inputNationality').value.trim().toUpperCase() || null;
+    gender = document.getElementById('inputGender').value || null;
     sailNumber = document.getElementById('inputSailNumber').value.trim() || null;
+    nationality = document.getElementById('inputNationality').value.trim().toUpperCase() || null;
+    age = document.getElementById('inputAge').value ? parseInt(document.getElementById('inputAge').value) : null;
+    weight = parseFloat(document.getElementById('inputWeight').value);
   }
   if (!name || isNaN(weight) || weight <= 0) return;
-  competitors.push({ name, weight, age, nationality: nationality || null, sailNumber: sailNumber || null });
+  competitors.push({ name, gender: gender || null, sailNumber: sailNumber || null, nationality: nationality || null, age, weight });
   document.getElementById('inputName').value = '';
-  document.getElementById('inputWeight').value = '';
-  document.getElementById('inputAge').value = '';
-  document.getElementById('inputNationality').value = '';
+  document.getElementById('inputGender').value = '';
   document.getElementById('inputSailNumber').value = '';
+  document.getElementById('inputNationality').value = '';
+  document.getElementById('inputAge').value = '';
+  document.getElementById('inputWeight').value = '';
   renderCompetitors();
 }
 
@@ -773,6 +788,13 @@ function clearAll() {
   renderCompetitors();
 }
 
+function displayAgeClass(age) {
+  if (!age) return '—';
+  const cat = getAgeCategory(age);
+  const labels = {junior:'Junior',youth:'Youth',open:'Open',master:'Master',grandmaster:'G.Master',legend:'Legend',superlegend:'S.Legend'};
+  return (labels[cat] || cat) + ' (' + age + ')';
+}
+
 function renderCompetitors() {
   const sorted = [...competitors].sort((a,b) => a.weight - b.weight);
   const tbody = document.getElementById('competitorBody');
@@ -780,11 +802,12 @@ function renderCompetitors() {
     const origIdx = competitors.indexOf(c);
     return `<tr>
       <td>${i+1}</td>
-      <td>${c.nationality ? countryFlag(c.nationality) + ' ' + c.nationality : '—'}</td>
-      <td style="font-family:var(--mono)">${c.sailNumber || '—'}</td>
       <td>${c.name}</td>
+      <td>${c.gender || '—'}</td>
+      <td style="font-family:var(--mono)">${c.sailNumber || '—'}</td>
+      <td>${c.nationality ? countryFlag(c.nationality) + ' ' + c.nationality : '—'}</td>
+      <td>${displayAgeClass(c.age)}</td>
       <td style="font-family:var(--mono)">${c.weight.toFixed(1)}</td>
-      <td style="font-family:var(--mono)">${c.age || '—'}</td>
       <td class="no-print"><button class="delete-btn" onclick="removeCompetitor(${origIdx})">×</button></td>
     </tr>`;
   }).join('');
@@ -813,13 +836,15 @@ function parseCSV(text) {
   for (let i = startIdx; i < lines.length; i++) {
     const parts = lines[i].split(/[,;\t]/).map(s => s.trim());
     if (parts.length < 2) continue;
+    // Format: name, gender, sail, country, age, weight
     const name = parts[0];
-    const weight = parseFloat(parts[1]);
-    const age = parts[2] ? parseInt(parts[2]) : null;
+    const gender = parts[1] && (parts[1].toUpperCase() === 'M' || parts[1].toUpperCase() === 'F') ? parts[1].toUpperCase() : null;
+    const sailNumber = parts[2] || null;
     const nationality = parts[3] ? parts[3].toUpperCase() : null;
-    const sailNumber = parts[4] || null;
+    const age = parts[4] ? parseInt(parts[4]) : null;
+    const weight = parseFloat(parts[5] || parts[1]);
     if (name && !isNaN(weight) && weight > 0) {
-      competitors.push({ name, weight, age: (age && !isNaN(age)) ? age : null, nationality: nationality || null, sailNumber: sailNumber || null });
+      competitors.push({ name, gender, sailNumber, nationality, age: (age && !isNaN(age)) ? age : null, weight });
     }
   }
   renderCompetitors();
@@ -827,9 +852,9 @@ function parseCSV(text) {
 
 function exportCSV() {
   if (!competitors.length) return;
-  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad,País,Vela\n' : 'Name,Weight,Age,Country,Sail\n';
+  let csv = currentLang === 'es' ? 'Nombre,Sexo,Vela,País,Edad,Peso\n' : 'Name,Gender,Sail,Country,Age,Weight\n';
   competitors.sort((a,b) => a.weight - b.weight).forEach(c => {
-    csv += `${c.name},${c.weight},${c.age||''},${c.nationality||''},${c.sailNumber||''}\n`;
+    csv += `${c.name},${c.gender||''},${c.sailNumber||''},${c.nationality||''},${c.age||''},${c.weight}\n`;
   });
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
@@ -849,7 +874,7 @@ dz.addEventListener('drop', e => {
 });
 
 // Enter key to add
-document.querySelectorAll('#inputName,#inputWeight,#inputAge,#inputNationality,#inputSailNumber').forEach(el => {
+document.querySelectorAll('#inputName,#inputGender,#inputSailNumber,#inputNationality,#inputAge,#inputWeight').forEach(el => {
   el.addEventListener('keydown', e => { if (e.key === 'Enter') addCompetitor(); });
 });
 
@@ -1010,12 +1035,13 @@ function generateFleet() {
     } while (usedNames.has(name) && attempts < 50);
     usedNames.add(name);
 
+    const gender = Math.random() < 0.35 ? 'F' : 'M';
     const weight = generateWeight(weightProfile);
     const age = Math.random() < 0.03 ? null : generateAge(ageProfile); // 3% sin edad
     const nationality = generateNationality();
     const sailNumber = String(generateSailNumber(nationality));
 
-    competitors.push({ name, weight, age, nationality, sailNumber });
+    competitors.push({ name, gender, sailNumber, nationality, age, weight });
   }
 
   renderCompetitors();
@@ -1221,7 +1247,7 @@ function renderGroupCards(groups, systemName) {
       <div class="stat"><span class="stat-label">${t('minWeight')}</span><span class="stat-value">${s.count ? s.min.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('maxWeight')}</span><span class="stat-value">${s.count ? s.max.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('avgWeight')}</span><span class="stat-value">${s.count ? s.avg.toFixed(1) : '—'} kg</span></div>
-      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.sailNumber ? ' (' + c.sailNumber + ')' : '')).join(', ') || '—'}</div>
+      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.gender ? ' [' + c.gender + ']' : '') + (c.sailNumber ? ' (' + c.sailNumber + ')' : '')).join(', ') || '—'}</div>
     </div>
   `).join('')}</div>`;
 }
@@ -1352,6 +1378,7 @@ function renderChart(res) {
     let idx = 0;
     for (let g = 0; g < groups.length - 1; g++) {
       idx += groups[g].length;
+      if (idx <= 0 || idx >= sorted.length) continue;
       const wLeft = sorted[idx - 1].weight;
       const wRight = sorted[idx].weight;
       cuts.push((wLeft + wRight) / 2);
@@ -1468,8 +1495,8 @@ function exportGroupsCSV() {
   const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
   
   let csv = currentLang === 'es'
-    ? 'Grupo,Nombre,Peso (kg),Edad,País,Vela,Sistema\n'
-    : 'Group,Name,Weight (kg),Age,Country,Sail,System\n';
+    ? 'Grupo,Nombre,Sexo,Vela,País,Clase,Peso (kg),Sistema\n'
+    : 'Group,Name,Gender,Sail,Country,Class,Weight (kg),System\n';
 
   const systems = [
     { name: t('elastic'), groups: lastResults.elastic },
@@ -1480,7 +1507,7 @@ function exportGroupsCSV() {
   systems.forEach(sys => {
     sys.groups.forEach((group, gi) => {
       group.forEach(c => {
-        csv += `${groupNames[gi]},${c.name},${c.weight},${c.age || ''},${c.nationality || ''},${c.sailNumber || ''},${sys.name}\n`;
+        csv += `${groupNames[gi]},${c.name},${c.gender || ''},${c.sailNumber || ''},${c.nationality || ''},${displayAgeClass(c.age)},${c.weight},${sys.name}\n`;
       });
     });
     csv += '\n';
