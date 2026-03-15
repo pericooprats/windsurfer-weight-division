@@ -22,9 +22,11 @@ An optional **age factor** can keep competitors from the same IWCA age category 
 
 - 🌍 **Bilingual** — Spanish / English interface
 - 📂 **CSV import** — Load competitor lists from a file
-- ✏️ **Manual entry** — Add competitors one by one
+- ✏️ **Manual entry** — Add competitors with name, gender, sail number, nationality, age & weight
+- 🏳️ **Country selector** — Dropdown with flags and ISAF sailing codes (ESP, GER, NED…)
 - 🎲 **Fleet generator** — Create random test fleets with configurable profiles
 - 📊 **Three-way comparison** — Fixed vs Split vs Elastic side by side
+- 🏅 **Age classes** — Automatic classification (Junior, Youth, Open, Master, G.Master, Legend, S.Legend)
 - 🖨️ **Print / PDF** — Clean printable output with all results
 - 📱 **PWA** — Works offline, installable on any device
 - 🔒 **No server needed** — Everything runs in the browser
@@ -41,12 +43,31 @@ Visit the published site and start using it immediately.
 
 ### CSV format
 ```
-Name,Weight,Age
-Carlos Ruiz,78.5,42
-Marta Vidal,73.0,28
-Hugo Bergström,85.0,55
+Name,Gender,Sail,Country,Age,Weight
+Carlos Ruiz,M,1234,ESP,42,78.5
+Marta Vidal,F,5678,FRA,28,73.0
+Hugo Bergström,M,9012,SWE,55,85.0
 ```
-Age column is optional.
+Only **Name** and **Weight** are required. Gender (M/F), Sail number, Country and Age are optional.
+
+### Country codes (ISAF sailing codes)
+
+| Code | Country | Code | Country | Code | Country |
+|------|---------|------|---------|------|---------|
+| ESP | Spain | FRA | France | ITA | Italy |
+| GER | Germany | POR | Portugal | NED | Netherlands |
+| GBR | United Kingdom | SWE | Sweden | NOR | Norway |
+| DEN | Denmark | FIN | Finland | SUI | Switzerland |
+| AUT | Austria | POL | Poland | CZE | Czech Republic |
+| HUN | Hungary | CRO | Croatia | GRE | Greece |
+| TUR | Turkey | UKR | Ukraine | IRL | Ireland |
+| BEL | Belgium | ROU | Romania | SRB | Serbia |
+| SLO | Slovenia | SVK | Slovakia | BRA | Brazil |
+| ARG | Argentina | USA | United States | JPN | Japan |
+| AUS | Australia | NZL | New Zealand | CAN | Canada |
+| CHI | Chile | MEX | Mexico | COL | Colombia |
+| ISR | Israel | RSA | South Africa | CHN | China |
+| KOR | South Korea | THA | Thailand | IND | India |
 
 ## Algorithm
 

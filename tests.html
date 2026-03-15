@@ -140,9 +140,43 @@ function info(msg) {
   out.innerHTML += `<div class="test info">ℹ️ ${msg}</div>`;
 }
 
-function makeFleet(weights, ages) {
+function countryFlag(code) {
+  if (!code) return '';
+  const cc = code.toUpperCase();
+  const MAP = {ESP:'ES',GER:'DE',FRA:'FR',ITA:'IT',POR:'PT',NED:'NL',SWE:'SE',NOR:'NO',DEN:'DK',FIN:'FI',SUI:'CH',AUT:'AT',POL:'PL',CZE:'CZ',HUN:'HU',CRO:'HR',GRE:'GR',TUR:'TR',RUS:'RU',UKR:'UA',GBR:'GB',IRL:'IE',BEL:'BE',LUX:'LU',ROU:'RO',BUL:'BG',SRB:'RS',SLO:'SI',SVK:'SK',LTU:'LT',LAT:'LV',EST:'EE',JPN:'JP',AUS:'AU',NZL:'NZ',USA:'US',CAN:'CA',BRA:'BR',ARG:'AR',CHI:'CL',MEX:'MX',COL:'CO',IND:'IN',ISR:'IL',RSA:'ZA',CHN:'CN',KOR:'KR',THA:'TH',MAS:'MY',SGP:'SG'};
+  const iso = MAP[cc] || cc.slice(0,2);
+  if (iso.length !== 2) return cc;
+  return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+function displayAgeClass(age) {
+  if (!age) return '—';
+  const cat = getAgeCategory(age);
+  const labels = {junior:'Junior',youth:'Youth',open:'Open',master:'Master',grandmaster:'G.Master',legend:'Legend',superlegend:'S.Legend'};
+  return (labels[cat] || cat) + ' (' + age + ')';
+}
+
+function parseCSVLine(line) {
+  // Format: name, gender, sail, country, age, weight
+  const parts = line.split(',').map(s => s.trim());
+  const name = parts[0];
+  const gender = parts[1] && (parts[1].toUpperCase() === 'M' || parts[1].toUpperCase() === 'F') ? parts[1].toUpperCase() : null;
+  const sailNumber = parts[2] || null;
+  const nationality = parts[3] ? parts[3].toUpperCase() : null;
+  const age = parts[4] ? parseInt(parts[4]) : null;
+  const weight = parseFloat(parts[5] || parts[1]);
+  if (name && !isNaN(weight) && weight > 0) {
+    return { name, gender, sailNumber, nationality, age: (age && !isNaN(age)) ? age : null, weight };
+  }
+  return null;
+}
+
+function makeFleet(weights, ages, options) {
   return weights.map((w, i) => ({
     name: `Sailor${i+1}`,
+    gender: options && options.genders ? options.genders[i] : 'M',
+    sailNumber: options && options.sails ? options.sails[i] : String(1000 + i),
+    nationality: options && options.nationalities ? options.nationalities[i] : 'ESP',
     weight: w,
     age: ages ? ages[i] : 30
   })).sort((a, b) => a.weight - b.weight);
@@ -388,6 +422,112 @@ info('<strong>Test group: Bimodal fleet (two clusters)</strong>');
     if (hasLight && hasHeavy) noMix = false;
   }
   assert(noMix, 'T14.1: Bimodal fleet — no group mixes light and heavy clusters');
+}
+
+// --- T15: countryFlag function ---
+info('<strong>Test group: Country flag emoji</strong>');
+{
+  assert(countryFlag('ESP') === '🇪🇸', 'T15.1: ESP → 🇪🇸 (mapped to ES)');
+  assert(countryFlag('GER') === '🇩🇪', 'T15.2: GER → 🇩🇪 (mapped to DE)');
+  assert(countryFlag('FRA') === '🇫🇷', 'T15.3: FRA → 🇫🇷 (mapped to FR)');
+  assert(countryFlag('USA') === '🇺🇸', 'T15.4: USA → 🇺🇸 (mapped to US)');
+  assert(countryFlag('GBR') === '🇬🇧', 'T15.5: GBR → 🇬🇧 (mapped to GB)');
+  assert(countryFlag('NED') === '🇳🇱', 'T15.6: NED → 🇳🇱 (mapped to NL)');
+  assert(countryFlag(null) === '', 'T15.7: null → empty string');
+  assert(countryFlag('') === '', 'T15.8: empty string → empty string');
+  // Unknown code: takes first 2 chars
+  assert(countryFlag('XX') === countryFlag('XX'), 'T15.9: Unknown code returns a flag (first 2 chars)');
+}
+
+// --- T16: displayAgeClass function ---
+info('<strong>Test group: Display age class</strong>');
+{
+  assert(displayAgeClass(null) === '—', 'T16.1: null age → dash');
+  assert(displayAgeClass(undefined) === '—', 'T16.2: undefined age → dash');
+  assert(displayAgeClass(12) === 'Junior (12)', 'T16.3: age 12 → Junior');
+  assert(displayAgeClass(14) === 'Junior (14)', 'T16.4: age 14 → Junior (boundary)');
+  assert(displayAgeClass(15) === 'Youth (15)', 'T16.5: age 15 → Youth');
+  assert(displayAgeClass(19) === 'Youth (19)', 'T16.6: age 19 → Youth');
+  assert(displayAgeClass(20) === 'Open (20)', 'T16.7: age 20 → Open');
+  assert(displayAgeClass(30) === 'Open (30)', 'T16.8: age 30 → Open');
+  assert(displayAgeClass(39) === 'Open (39)', 'T16.9: age 39 → Open (boundary)');
+  assert(displayAgeClass(40) === 'Master (40)', 'T16.10: age 40 → Master');
+  assert(displayAgeClass(50) === 'G.Master (50)', 'T16.11: age 50 → G.Master');
+  assert(displayAgeClass(60) === 'Legend (60)', 'T16.12: age 60 → Legend');
+  assert(displayAgeClass(70) === 'S.Legend (70)', 'T16.13: age 70 → S.Legend');
+}
+
+// --- T17: CSV parsing with new fields ---
+info('<strong>Test group: CSV parsing with new fields</strong>');
+{
+  const r1 = parseCSVLine('Juan Pérez, M, 1234, ESP, 25, 78.5');
+  assert(r1 !== null, 'T17.1: Valid full CSV line parses successfully');
+  assert(r1.name === 'Juan Pérez', 'T17.2: Name parsed correctly');
+  assert(r1.gender === 'M', 'T17.3: Gender parsed correctly');
+  assert(r1.sailNumber === '1234', 'T17.4: Sail number parsed correctly');
+  assert(r1.nationality === 'ESP', 'T17.5: Nationality parsed correctly');
+  assert(r1.age === 25, 'T17.6: Age parsed correctly');
+  assert(r1.weight === 78.5, 'T17.7: Weight parsed correctly');
+
+  const r2 = parseCSVLine('Anna, F, 5678, GER, 30, 65.0');
+  assert(r2.gender === 'F', 'T17.8: Female gender parsed');
+  assert(r2.nationality === 'GER', 'T17.9: GER nationality parsed');
+
+  const r3 = parseCSVLine('Test, , , , , 80');
+  assert(r3 !== null, 'T17.10: Line with empty optional fields parses');
+  assert(r3.gender === null, 'T17.11: Empty gender → null');
+  assert(r3.nationality === null, 'T17.12: Empty nationality → null');
+}
+
+// --- T18: makeFleet includes new fields ---
+info('<strong>Test group: makeFleet with new fields</strong>');
+{
+  const fleet = makeFleet([70, 80], [25, 30]);
+  assert(fleet[0].gender === 'M', 'T18.1: Default gender is M');
+  assert(fleet[0].sailNumber !== null, 'T18.2: Default sail number assigned');
+  assert(fleet[0].nationality === 'ESP', 'T18.3: Default nationality is ESP');
+
+  const fleet2 = makeFleet([70, 80], [25, 30], {
+    genders: ['F', 'M'],
+    sails: ['ESP-1234', 'GER-5678'],
+    nationalities: ['ESP', 'GER']
+  });
+  assert(fleet2[0].gender === 'F', 'T18.4: Custom gender F assigned');
+  assert(fleet2[0].sailNumber === 'ESP-1234', 'T18.5: Custom sail number assigned');
+  assert(fleet2[0].nationality === 'ESP', 'T18.6: Custom nationality assigned');
+}
+
+// --- T19: Algorithms work with full competitor objects ---
+info('<strong>Test group: Algorithms with full competitor objects</strong>');
+{
+  const fleet = makeFleet(
+    [62,65,68,71,73,75,77,79,81,83,85,88],
+    [17,25,30,40,22,18,35,50,28,45,60,33],
+    {
+      genders: ['M','F','M','M','F','M','F','M','M','F','M','F'],
+      sails: ['1','2','3','4','5','6','7','8','9','10','11','12'],
+      nationalities: ['ESP','FRA','ITA','GER','POR','NED','GBR','SWE','NOR','DEN','SUI','AUT']
+    }
+  );
+  const res = divisionElastic(fleet, 10, 0.4, 0);
+  const total = res.groups.reduce((s, g) => s + g.length, 0);
+  assert(total === 12, 'T19.1: All 12 competitors assigned with full objects');
+  assert(res.groups.every(g => g.length >= 1), 'T19.2: No empty groups');
+  // Verify extra fields are preserved through division
+  const allHaveFields = res.groups.every(g => g.every(c => c.gender && c.sailNumber && c.nationality));
+  assert(allHaveFields, 'T19.3: All competitor fields preserved after division');
+}
+
+// --- T20: CSV export format ---
+info('<strong>Test group: CSV export format</strong>');
+{
+  const competitor = { name: 'Test', gender: 'M', sailNumber: '1234', nationality: 'ESP', age: 25, weight: 78.5 };
+  const csvLine = `${competitor.name},${competitor.gender||''},${competitor.sailNumber||''},${competitor.nationality||''},${competitor.age||''},${competitor.weight}`;
+  assert(csvLine === 'Test,M,1234,ESP,25,78.5', 'T20.1: CSV export format matches expected');
+
+  const partial = { name: 'NoExtras', gender: null, sailNumber: null, nationality: null, age: null, weight: 70 };
+  const csvPartial = `${partial.name},${partial.gender||''},${partial.sailNumber||''},${partial.nationality||''},${partial.age||''},${partial.weight}`;
+  assert(csvPartial === 'NoExtras,,,,,70', 'T20.2: CSV export with null fields uses empty strings');
 }
 
 // ============================================================

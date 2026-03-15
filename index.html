@@ -94,7 +94,7 @@ body {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap: 20px;
 }
 @media (max-width: 768px) {
@@ -195,9 +195,11 @@ tr:hover td { background: var(--sky-pale); }
 
 /* --- COMPETITOR LIST --- */
 .competitor-list {
-  max-height: 320px; overflow-y: auto;
+  max-height: 320px; overflow-y: auto; overflow-x: auto;
   border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
 }
+.competitor-list table { white-space: nowrap; }
+.competitor-list th, .competitor-list td { padding: 6px 8px; font-size: 12px; }
 .competitor-count {
   font-size: 12px; color: var(--gray-500); padding: 8px 12px;
   background: var(--gray-50); border-top: 1px solid var(--gray-200);
@@ -415,13 +417,31 @@ tr:hover td { background: var(--sky-pale); }
             <label data-i18n="name">Nombre</label>
             <input type="text" id="inputName" placeholder="—">
           </div>
+          <div class="form-group" style="flex:0.7">
+            <label data-i18n="gender">Sexo</label>
+            <select id="inputGender">
+              <option value="">—</option>
+              <option value="M">M</option>
+              <option value="F">F</option>
+            </select>
+          </div>
           <div class="form-group" style="flex:1">
-            <label data-i18n="weightKg">Peso (kg)</label>
-            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
+            <label data-i18n="sailNumber">Vela</label>
+            <input type="text" id="inputSailNumber" placeholder="—">
+          </div>
+          <div class="form-group" style="flex:1.5">
+            <label data-i18n="nationality">País</label>
+            <select id="inputNationality">
+              <option value="">—</option>
+            </select>
           </div>
           <div class="form-group" style="flex:1">
             <label data-i18n="age">Edad</label>
             <input type="number" id="inputAge" min="5" max="99" placeholder="—">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label data-i18n="weightKg">Peso (kg)</label>
+            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
           </div>
           <div class="form-group" style="flex:0;justify-content:flex-end">
             <label>&nbsp;</label>
@@ -436,8 +456,11 @@ tr:hover td { background: var(--sky-pale); }
               <tr>
                 <th>#</th>
                 <th data-i18n="name">Nombre</th>
+                <th data-i18n="gender">Sexo</th>
+                <th data-i18n="sailNumber">Vela</th>
+                <th data-i18n="nationality">País</th>
+                <th data-i18n="ageClass">Clase</th>
                 <th data-i18n="weightKg">Peso (kg)</th>
-                <th data-i18n="age">Edad</th>
                 <th class="no-print"></th>
               </tr>
             </thead>
@@ -548,8 +571,12 @@ const i18n = {
     genNote: "Genera nombres y datos aleatorios realistas. Cada vez serán distintos.",
     clearAll: "Borrar todo",
     csvDrop: "Arrastra un CSV aquí o haz clic para seleccionar",
-    csvFormat: "Formato: nombre, peso (kg), edad (opcional)",
+    csvFormat: "Formato: nombre, sexo, vela, país, edad, peso (kg)",
     name: "Nombre",
+    gender: "Sexo",
+    sailNumber: "Vela",
+    nationality: "País",
+    ageClass: "Clase",
     weightKg: "Peso (kg)",
     age: "Edad",
     add: "Añadir",
@@ -630,8 +657,12 @@ const i18n = {
     genNote: "Generates realistic random names and data. Different each time.",
     clearAll: "Clear all",
     csvDrop: "Drag a CSV here or click to select",
-    csvFormat: "Format: name, weight (kg), age (optional)",
+    csvFormat: "Format: name, gender, sail, country, age, weight (kg)",
     name: "Name",
+    gender: "Gender",
+    sailNumber: "Sail",
+    nationality: "Country",
+    ageClass: "Class",
     weightKg: "Weight (kg)",
     age: "Age",
     add: "Add",
@@ -711,6 +742,8 @@ function setLang(lang) {
   });
   // Re-render results if present
   if (lastResults) renderResults(lastResults);
+  // Update nationality selector labels
+  if (typeof populateNationalitySelect === 'function') populateNationalitySelect();
 }
 function t(key) { return i18n[currentLang][key] || key; }
 
@@ -720,17 +753,100 @@ function t(key) { return i18n[currentLang][key] || key; }
 let competitors = [];
 let lastResults = null;
 
-function addCompetitor(name, weight, age) {
+function countryFlag(code) {
+  if (!code) return '';
+  const cc = code.toUpperCase();
+  const MAP = {ESP:'ES',GER:'DE',FRA:'FR',ITA:'IT',POR:'PT',NED:'NL',SWE:'SE',NOR:'NO',DEN:'DK',FIN:'FI',SUI:'CH',AUT:'AT',POL:'PL',CZE:'CZ',HUN:'HU',CRO:'HR',GRE:'GR',TUR:'TR',RUS:'RU',UKR:'UA',GBR:'GB',IRL:'IE',BEL:'BE',LUX:'LU',ROU:'RO',BUL:'BG',SRB:'RS',SLO:'SI',SVK:'SK',LTU:'LT',LAT:'LV',EST:'EE',JPN:'JP',AUS:'AU',NZL:'NZ',USA:'US',CAN:'CA',BRA:'BR',ARG:'AR',CHI:'CL',MEX:'MX',COL:'CO',IND:'IN',ISR:'IL',RSA:'ZA',CHN:'CN',KOR:'KR',THA:'TH',MAS:'MY',SGP:'SG'};
+  const iso = MAP[cc] || cc.slice(0,2);
+  if (iso.length !== 2) return cc;
+  return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+const COUNTRY_LIST = [
+  {code:'ESP',name:'España',nameEn:'Spain'},
+  {code:'FRA',name:'Francia',nameEn:'France'},
+  {code:'ITA',name:'Italia',nameEn:'Italy'},
+  {code:'GER',name:'Alemania',nameEn:'Germany'},
+  {code:'POR',name:'Portugal',nameEn:'Portugal'},
+  {code:'NED',name:'Países Bajos',nameEn:'Netherlands'},
+  {code:'GBR',name:'Reino Unido',nameEn:'United Kingdom'},
+  {code:'SWE',name:'Suecia',nameEn:'Sweden'},
+  {code:'NOR',name:'Noruega',nameEn:'Norway'},
+  {code:'DEN',name:'Dinamarca',nameEn:'Denmark'},
+  {code:'FIN',name:'Finlandia',nameEn:'Finland'},
+  {code:'SUI',name:'Suiza',nameEn:'Switzerland'},
+  {code:'AUT',name:'Austria',nameEn:'Austria'},
+  {code:'POL',name:'Polonia',nameEn:'Poland'},
+  {code:'CZE',name:'Chequia',nameEn:'Czech Republic'},
+  {code:'HUN',name:'Hungría',nameEn:'Hungary'},
+  {code:'CRO',name:'Croacia',nameEn:'Croatia'},
+  {code:'GRE',name:'Grecia',nameEn:'Greece'},
+  {code:'TUR',name:'Turquía',nameEn:'Turkey'},
+  {code:'RUS',name:'Rusia',nameEn:'Russia'},
+  {code:'UKR',name:'Ucrania',nameEn:'Ukraine'},
+  {code:'IRL',name:'Irlanda',nameEn:'Ireland'},
+  {code:'BEL',name:'Bélgica',nameEn:'Belgium'},
+  {code:'LUX',name:'Luxemburgo',nameEn:'Luxembourg'},
+  {code:'ROU',name:'Rumanía',nameEn:'Romania'},
+  {code:'BUL',name:'Bulgaria',nameEn:'Bulgaria'},
+  {code:'SRB',name:'Serbia',nameEn:'Serbia'},
+  {code:'SLO',name:'Eslovenia',nameEn:'Slovenia'},
+  {code:'SVK',name:'Eslovaquia',nameEn:'Slovakia'},
+  {code:'LTU',name:'Lituania',nameEn:'Lithuania'},
+  {code:'LAT',name:'Letonia',nameEn:'Latvia'},
+  {code:'EST',name:'Estonia',nameEn:'Estonia'},
+  {code:'JPN',name:'Japón',nameEn:'Japan'},
+  {code:'AUS',name:'Australia',nameEn:'Australia'},
+  {code:'NZL',name:'Nueva Zelanda',nameEn:'New Zealand'},
+  {code:'USA',name:'Estados Unidos',nameEn:'United States'},
+  {code:'CAN',name:'Canadá',nameEn:'Canada'},
+  {code:'BRA',name:'Brasil',nameEn:'Brazil'},
+  {code:'ARG',name:'Argentina',nameEn:'Argentina'},
+  {code:'CHI',name:'Chile',nameEn:'Chile'},
+  {code:'MEX',name:'México',nameEn:'Mexico'},
+  {code:'COL',name:'Colombia',nameEn:'Colombia'},
+  {code:'IND',name:'India',nameEn:'India'},
+  {code:'ISR',name:'Israel',nameEn:'Israel'},
+  {code:'RSA',name:'Sudáfrica',nameEn:'South Africa'},
+  {code:'CHN',name:'China',nameEn:'China'},
+  {code:'KOR',name:'Corea del Sur',nameEn:'South Korea'},
+  {code:'THA',name:'Tailandia',nameEn:'Thailand'},
+  {code:'MAS',name:'Malasia',nameEn:'Malaysia'},
+  {code:'SGP',name:'Singapur',nameEn:'Singapore'},
+];
+
+function populateNationalitySelect() {
+  const select = document.getElementById('inputNationality');
+  const currentVal = select.value;
+  // Keep the first "—" option
+  while (select.options.length > 1) select.remove(1);
+  const isEn = currentLang === 'en';
+  COUNTRY_LIST.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = countryFlag(c.code) + ' ' + (isEn ? c.nameEn : c.name) + ' (' + c.code + ')';
+    select.appendChild(opt);
+  });
+  if (currentVal) select.value = currentVal;
+}
+
+function addCompetitor(name, gender, sailNumber, nationality, age, weight) {
   if (!name) {
     name = document.getElementById('inputName').value.trim();
-    weight = parseFloat(document.getElementById('inputWeight').value);
+    gender = document.getElementById('inputGender').value || null;
+    sailNumber = document.getElementById('inputSailNumber').value.trim() || null;
+    nationality = document.getElementById('inputNationality').value || null;
     age = document.getElementById('inputAge').value ? parseInt(document.getElementById('inputAge').value) : null;
+    weight = parseFloat(document.getElementById('inputWeight').value);
   }
   if (!name || isNaN(weight) || weight <= 0) return;
-  competitors.push({ name, weight, age });
+  competitors.push({ name, gender: gender || null, sailNumber: sailNumber || null, nationality: nationality || null, age, weight });
   document.getElementById('inputName').value = '';
-  document.getElementById('inputWeight').value = '';
+  document.getElementById('inputGender').value = '';
+  document.getElementById('inputSailNumber').value = '';
+  document.getElementById('inputNationality').value = '';
   document.getElementById('inputAge').value = '';
+  document.getElementById('inputWeight').value = '';
   renderCompetitors();
 }
 
@@ -746,6 +862,13 @@ function clearAll() {
   renderCompetitors();
 }
 
+function displayAgeClass(age) {
+  if (!age) return '—';
+  const cat = getAgeCategory(age);
+  const labels = {junior:'Junior',youth:'Youth',open:'Open',master:'Master',grandmaster:'G.Master',legend:'Legend',superlegend:'S.Legend'};
+  return (labels[cat] || cat) + ' (' + age + ')';
+}
+
 function renderCompetitors() {
   const sorted = [...competitors].sort((a,b) => a.weight - b.weight);
   const tbody = document.getElementById('competitorBody');
@@ -754,8 +877,11 @@ function renderCompetitors() {
     return `<tr>
       <td>${i+1}</td>
       <td>${c.name}</td>
+      <td>${c.gender || '—'}</td>
+      <td style="font-family:var(--mono)">${c.sailNumber || '—'}</td>
+      <td>${c.nationality ? countryFlag(c.nationality) + ' ' + c.nationality : '—'}</td>
+      <td>${displayAgeClass(c.age)}</td>
       <td style="font-family:var(--mono)">${c.weight.toFixed(1)}</td>
-      <td style="font-family:var(--mono)">${c.age || '—'}</td>
       <td class="no-print"><button class="delete-btn" onclick="removeCompetitor(${origIdx})">×</button></td>
     </tr>`;
   }).join('');
@@ -784,11 +910,15 @@ function parseCSV(text) {
   for (let i = startIdx; i < lines.length; i++) {
     const parts = lines[i].split(/[,;\t]/).map(s => s.trim());
     if (parts.length < 2) continue;
+    // Format: name, gender, sail, country, age, weight
     const name = parts[0];
-    const weight = parseFloat(parts[1]);
-    const age = parts[2] ? parseInt(parts[2]) : null;
+    const gender = parts[1] && (parts[1].toUpperCase() === 'M' || parts[1].toUpperCase() === 'F') ? parts[1].toUpperCase() : null;
+    const sailNumber = parts[2] || null;
+    const nationality = parts[3] ? parts[3].toUpperCase() : null;
+    const age = parts[4] ? parseInt(parts[4]) : null;
+    const weight = parseFloat(parts[5] || parts[1]);
     if (name && !isNaN(weight) && weight > 0) {
-      competitors.push({ name, weight, age: (age && !isNaN(age)) ? age : null });
+      competitors.push({ name, gender, sailNumber, nationality, age: (age && !isNaN(age)) ? age : null, weight });
     }
   }
   renderCompetitors();
@@ -796,9 +926,9 @@ function parseCSV(text) {
 
 function exportCSV() {
   if (!competitors.length) return;
-  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad\n' : 'Name,Weight,Age\n';
+  let csv = currentLang === 'es' ? 'Nombre,Sexo,Vela,País,Edad,Peso\n' : 'Name,Gender,Sail,Country,Age,Weight\n';
   competitors.sort((a,b) => a.weight - b.weight).forEach(c => {
-    csv += `${c.name},${c.weight},${c.age||''}\n`;
+    csv += `${c.name},${c.gender||''},${c.sailNumber||''},${c.nationality||''},${c.age||''},${c.weight}\n`;
   });
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
@@ -818,7 +948,7 @@ dz.addEventListener('drop', e => {
 });
 
 // Enter key to add
-document.querySelectorAll('#inputName,#inputWeight,#inputAge').forEach(el => {
+document.querySelectorAll('#inputName,#inputGender,#inputSailNumber,#inputNationality,#inputAge,#inputWeight').forEach(el => {
   el.addEventListener('keydown', e => { if (e.key === 'Enter') addCompetitor(); });
 });
 
@@ -853,6 +983,39 @@ const LAST_NAMES = [
   "Ríos","van Dijk","Molina","Ortega","Bauer","Volkov","Cruz","Giménez","Hakansson",
   "Petersen","Castellano","Sundström","López","Hofmann","O'Brien","Petit","Singh","Patel"
 ];
+
+const COUNTRIES = [
+  'ESP','FRA','GER','ITA','POR','NED','SWE','NOR','DEN','FIN',
+  'SUI','AUT','POL','CZE','HUN','CRO','GRE','GBR','IRL','BEL',
+  'ROU','SRB','SLO','BRA','ARG','USA','JPN','AUS','ISR','RSA'
+];
+
+function generateNationality() {
+  // Weighted: southern European countries more common for windsurfing
+  const r = Math.random();
+  if (r < 0.18) return 'ESP';
+  if (r < 0.30) return 'FRA';
+  if (r < 0.40) return 'ITA';
+  if (r < 0.48) return 'GER';
+  if (r < 0.54) return 'POR';
+  if (r < 0.60) return 'NED';
+  if (r < 0.65) return 'GBR';
+  if (r < 0.70) return 'SWE';
+  if (r < 0.74) return 'NOR';
+  if (r < 0.78) return 'DEN';
+  if (r < 0.82) return 'SUI';
+  if (r < 0.85) return 'AUT';
+  if (r < 0.88) return 'POL';
+  if (r < 0.90) return 'GRE';
+  if (r < 0.92) return 'CRO';
+  if (r < 0.94) return 'BRA';
+  if (r < 0.96) return 'ARG';
+  return COUNTRIES[randInt(0, COUNTRIES.length - 1)];
+}
+
+function generateSailNumber(nationality) {
+  return randInt(1, 9999);
+}
 
 function randBetween(min, max) { return min + Math.random() * (max - min); }
 function randInt(min, max) { return Math.floor(randBetween(min, max + 1)); }
@@ -946,10 +1109,13 @@ function generateFleet() {
     } while (usedNames.has(name) && attempts < 50);
     usedNames.add(name);
 
+    const gender = Math.random() < 0.35 ? 'F' : 'M';
     const weight = generateWeight(weightProfile);
     const age = Math.random() < 0.03 ? null : generateAge(ageProfile); // 3% sin edad
+    const nationality = generateNationality();
+    const sailNumber = String(generateSailNumber(nationality));
 
-    competitors.push({ name, weight, age });
+    competitors.push({ name, gender, sailNumber, nationality, age, weight });
   }
 
   renderCompetitors();
@@ -1155,7 +1321,7 @@ function renderGroupCards(groups, systemName) {
       <div class="stat"><span class="stat-label">${t('minWeight')}</span><span class="stat-value">${s.count ? s.min.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('maxWeight')}</span><span class="stat-value">${s.count ? s.max.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('avgWeight')}</span><span class="stat-value">${s.count ? s.avg.toFixed(1) : '—'} kg</span></div>
-      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => c.name).join(', ') || '—'}</div>
+      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.gender ? ' [' + c.gender + ']' : '') + (c.sailNumber ? ' (' + c.sailNumber + ')' : '')).join(', ') || '—'}</div>
     </div>
   `).join('')}</div>`;
 }
@@ -1286,6 +1452,7 @@ function renderChart(res) {
     let idx = 0;
     for (let g = 0; g < groups.length - 1; g++) {
       idx += groups[g].length;
+      if (idx <= 0 || idx >= sorted.length) continue;
       const wLeft = sorted[idx - 1].weight;
       const wRight = sorted[idx].weight;
       cuts.push((wLeft + wRight) / 2);
@@ -1401,9 +1568,9 @@ function exportGroupsCSV() {
   if (!lastResults) return;
   const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
   
-  let csv = currentLang === 'es' 
-    ? 'Grupo,Nombre,Peso (kg),Edad,Sistema\n'
-    : 'Group,Name,Weight (kg),Age,System\n';
+  let csv = currentLang === 'es'
+    ? 'Grupo,Nombre,Sexo,Vela,País,Clase,Peso (kg),Sistema\n'
+    : 'Group,Name,Gender,Sail,Country,Class,Weight (kg),System\n';
 
   const systems = [
     { name: t('elastic'), groups: lastResults.elastic },
@@ -1414,7 +1581,7 @@ function exportGroupsCSV() {
   systems.forEach(sys => {
     sys.groups.forEach((group, gi) => {
       group.forEach(c => {
-        csv += `${groupNames[gi]},${c.name},${c.weight},${c.age || ''},${sys.name}\n`;
+        csv += `${groupNames[gi]},${c.name},${c.gender || ''},${c.sailNumber || ''},${c.nationality || ''},${displayAgeClass(c.age)},${c.weight},${sys.name}\n`;
       });
     });
     csv += '\n';
@@ -1435,6 +1602,7 @@ function showTab(tab) {
 }
 
 // Init
+populateNationalitySelect();
 updateParamDisplay();
 
 // Register Service Worker for offline support
