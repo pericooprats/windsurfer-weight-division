@@ -99,6 +99,7 @@ body {
 }
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
+  .grid-2 > * { min-width: 0; overflow: hidden; }
 }
 
 /* --- CARDS --- */
@@ -406,6 +407,23 @@ tr:hover td { background: var(--sky-pale); }
   padding-top: 16px; border-top: 1px solid var(--gray-200);
   justify-content: space-between; align-items: center;
 }
+
+/* --- MANUAL ENTRY TOGGLE --- */
+.manual-toggle-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border: 1px dashed var(--gray-300); border-radius: var(--radius-sm);
+  background: var(--gray-50); color: var(--gray-500); font-family: var(--font);
+  font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s;
+  margin-bottom: 12px;
+}
+.manual-toggle-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--sky-pale); }
+.manual-toggle-btn .chevron { transition: transform .2s; font-size: 10px; }
+.manual-toggle-btn.open .chevron { transform: rotate(90deg); }
+.manual-entry-panel {
+  display: none; animation: slideDown .2s ease-out;
+}
+.manual-entry-panel.visible { display: block; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
@@ -480,41 +498,46 @@ tr:hover td { background: var(--sky-pale); }
           <p style="font-size:11px;color:var(--gray-400);margin-top:8px" data-i18n="genNote">Genera nombres y datos aleatorios realistas. Cada vez serán distintos.</p>
         </div>
         
-        <!-- Manual add -->
-        <div class="form-row no-print">
-          <div class="form-group" style="flex:2">
-            <label data-i18n="name">Nombre</label>
-            <input type="text" id="inputName" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:0.7">
-            <label data-i18n="gender">Sexo</label>
-            <select id="inputGender">
-              <option value="">—</option>
-              <option value="M">M</option>
-              <option value="F">F</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="sailNumber">Vela</label>
-            <input type="text" id="inputSailNumber" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:1.5">
-            <label data-i18n="nationality">País</label>
-            <select id="inputNationality">
-              <option value="">—</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="age">Edad</label>
-            <input type="number" id="inputAge" min="5" max="99" placeholder="—">
-          </div>
-          <div class="form-group" style="flex:1">
-            <label data-i18n="weightKg">Peso (kg)</label>
-            <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
-          </div>
-          <div class="form-group" style="flex:0;justify-content:flex-end">
-            <label>&nbsp;</label>
-            <button class="btn btn-primary" onclick="addCompetitor()" data-i18n="add">Añadir</button>
+        <!-- Manual add (collapsible) -->
+        <button class="manual-toggle-btn no-print" onclick="toggleManualEntry()" id="manualToggleBtn">
+          <span class="chevron">&#9654;</span> <span data-i18n="manualEntry">Añadir manualmente</span>
+        </button>
+        <div class="manual-entry-panel no-print" id="manualEntryPanel">
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label data-i18n="name">Nombre</label>
+              <input type="text" id="inputName" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:0.7">
+              <label data-i18n="gender">Sexo</label>
+              <select id="inputGender">
+                <option value="">—</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="sailNumber">Vela</label>
+              <input type="text" id="inputSailNumber" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:1.5">
+              <label data-i18n="nationality">País</label>
+              <select id="inputNationality">
+                <option value="">—</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="age">Edad</label>
+              <input type="number" id="inputAge" min="5" max="99" placeholder="—">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label data-i18n="weightKg">Peso (kg)</label>
+              <input type="number" id="inputWeight" step="0.1" min="30" max="200" placeholder="0">
+            </div>
+            <div class="form-group" style="flex:0;justify-content:flex-end">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary" onclick="addCompetitor()" data-i18n="add">Añadir</button>
+            </div>
           </div>
         </div>
 
@@ -752,6 +775,7 @@ const i18n = {
     noGenderWarning: "competidores sin sexo asignado (excluidos de la división por sexo)",
     minCompetitorsN: "Se necesitan al menos {n} regatistas",
     fixedDisabled: "El sistema Fijo solo está disponible con 4 grupos",
+    manualEntry: "Añadir manualmente",
   },
   en: {
     title: "Elastic Weight Division",
@@ -854,6 +878,7 @@ const i18n = {
     noGenderWarning: "competitors without assigned gender (excluded from gender split)",
     minCompetitorsN: "At least {n} competitors are required",
     fixedDisabled: "Fixed system is only available with 4 groups",
+    manualEntry: "Add manually",
   }
 };
 
@@ -1092,6 +1117,13 @@ document.querySelectorAll('#inputName,#inputGender,#inputSailNumber,#inputNation
 function toggleGenerator() {
   const panel = document.getElementById('generatorPanel');
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleManualEntry() {
+  const panel = document.getElementById('manualEntryPanel');
+  const btn = document.getElementById('manualToggleBtn');
+  const isOpen = panel.classList.toggle('visible');
+  btn.classList.toggle('open', isOpen);
 }
 
 const FIRST_NAMES = [
@@ -1649,18 +1681,23 @@ function renderSingleFleetResults(res, sorted) {
   renderChart(res, sorted);
 }
 
-function renderGenderFleetResults(res, genderRes, sorted, genderLabel, genderClass) {
+function renderGenderFleetSection(genderRes, sorted, genderLabel, genderClass, systemKey) {
   let html = `<div class="gender-section-header ${genderClass}">${genderLabel} (${sorted.length})</div>`;
-  if (genderRes.relaxInfo && !genderRes.relaxInfo.fallback) {
-    html += `<div class="notice notice-warn">${t('relaxed')}<br>
-      ${genderRes.relaxInfo.range > genderRes.params.maxRange ? t('relaxRange') + ' ' + genderRes.relaxInfo.range + ' kg. ' : ''}
-      ${genderRes.relaxInfo.percent > genderRes.params.maxPercent ? t('relaxPercent') + ' ' + Math.round(genderRes.relaxInfo.percent*100) + '%. ' : ''}
-    </div>`;
-  } else if (!genderRes.relaxInfo) {
-    html += `<div class="notice notice-success">${t('noRelax')}</div>`;
+  if (systemKey === 'elastic') {
+    if (genderRes.relaxInfo && !genderRes.relaxInfo.fallback) {
+      html += `<div class="notice notice-warn">${t('relaxed')}<br>
+        ${genderRes.relaxInfo.range > genderRes.params.maxRange ? t('relaxRange') + ' ' + genderRes.relaxInfo.range + ' kg. ' : ''}
+        ${genderRes.relaxInfo.percent > genderRes.params.maxPercent ? t('relaxPercent') + ' ' + Math.round(genderRes.relaxInfo.percent*100) + '%. ' : ''}
+      </div>`;
+    } else if (!genderRes.relaxInfo) {
+      html += `<div class="notice notice-success">${t('noRelax')}</div>`;
+    }
   }
-  html += renderQualityChips(genderRes.elastic, sorted);
-  html += renderGroupCards(genderRes.elastic, 'elastic');
+  const groups = genderRes[systemKey];
+  if (groups) {
+    html += renderQualityChips(groups, sorted);
+    html += renderGroupCards(groups, systemKey);
+  }
   return html;
 }
 
@@ -1673,49 +1710,108 @@ function renderResults(res) {
     renderSingleFleetResults(res, sorted);
   } else {
     // Gender-separated mode
+    const hasFixed = res.params.numGroups === 4;
     const fixedTab = document.querySelector('.tab-fixed');
-    if (fixedTab) fixedTab.classList.add('tab-disabled');
+    if (fixedTab) fixedTab.classList.toggle('tab-disabled', !hasFixed);
 
-    let elasticHTML = '';
-    let splitHTML = '';
+    const genders = [];
+    if (res.male) genders.push({ res: res.male, label: t('maleFleet'), cls: 'male' });
+    if (res.female) genders.push({ res: res.female, label: t('femaleFleet'), cls: 'female' });
 
-    if (res.noGender && res.noGender.length > 0) {
-      const warnMsg = `<div class="notice notice-warn">${res.noGender.length} ${t('noGenderWarning')}</div>`;
-      elasticHTML += warnMsg;
-      splitHTML += warnMsg;
-    }
+    const warnMsg = (res.noGender && res.noGender.length > 0)
+      ? `<div class="notice notice-warn">${res.noGender.length} ${t('noGenderWarning')}</div>` : '';
 
-    if (res.male) {
-      const maleSorted = res.male.sorted || [];
-      elasticHTML += renderGenderFleetResults(res, res.male, maleSorted, t('maleFleet'), 'male');
-      splitHTML += `<div class="gender-section-header male">${t('maleFleet')} (${maleSorted.length})</div>`;
-      splitHTML += renderQualityChips(res.male.split, maleSorted);
-      splitHTML += renderGroupCards(res.male.split, 'split');
-    }
-    if (res.female) {
-      const femaleSorted = res.female.sorted || [];
-      elasticHTML += renderGenderFleetResults(res, res.female, femaleSorted, t('femaleFleet'), 'female');
-      splitHTML += `<div class="gender-section-header female">${t('femaleFleet')} (${femaleSorted.length})</div>`;
-      splitHTML += renderQualityChips(res.female.split, femaleSorted);
-      splitHTML += renderGroupCards(res.female.split, 'split');
-    }
+    // Build HTML for each system tab
+    const systemKeys = ['elastic', 'split'];
+    if (hasFixed) systemKeys.push('fixed');
+
+    const tabContent = {};
+    systemKeys.forEach(key => {
+      let html = warnMsg;
+      genders.forEach(g => {
+        html += renderGenderFleetSection(g.res, g.res.sorted || [], g.label, g.cls, key);
+      });
+      tabContent[key] = html;
+    });
 
     document.getElementById('tab-elastic').setAttribute('data-print-title', t('tabElastic'));
-    document.getElementById('tab-elastic').innerHTML = elasticHTML;
-    document.getElementById('tab-fixed').setAttribute('data-print-title', t('tabFixed'));
-    document.getElementById('tab-fixed').innerHTML = `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
+    document.getElementById('tab-elastic').innerHTML = tabContent.elastic || '';
     document.getElementById('tab-split').setAttribute('data-print-title', t('tabSplit'));
-    document.getElementById('tab-split').innerHTML = splitHTML;
-    document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
-    document.getElementById('tab-compare').innerHTML = `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
-    document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
-    document.getElementById('tab-chart').innerHTML = '';
+    document.getElementById('tab-split').innerHTML = tabContent.split || '';
+    document.getElementById('tab-fixed').setAttribute('data-print-title', t('tabFixed'));
+    document.getElementById('tab-fixed').innerHTML = hasFixed ? tabContent.fixed : `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
 
-    // Tab badges
-    const elasticTabBtn = document.querySelector('.tab-elastic');
-    if (elasticTabBtn) elasticTabBtn.textContent = t('tabElastic');
-    const splitTabBtn = document.querySelector('.tab-split');
-    if (splitTabBtn) splitTabBtn.textContent = t('tabSplit');
+    // Compare tab — aggregate metrics across genders per system
+    const allSorted = [...(res.male ? res.male.sorted : []), ...(res.female ? res.female.sorted : [])].sort((a,b) => a.weight - b.weight);
+    const systems = [];
+    systemKeys.forEach(key => {
+      const allGroups = [];
+      genders.forEach(g => { if (g.res[key]) allGroups.push(...g.res[key]); });
+      if (allGroups.length) {
+        const labelMap = { elastic: t('elastic'), split: t('split'), fixed: t('fixed') };
+        systems.push({ key, label: labelMap[key], groups: allGroups });
+      }
+    });
+
+    const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, allSorted) }));
+
+    function best(vals, lower=true) {
+      const target = lower ? Math.min(...vals) : Math.max(...vals);
+      return vals.map(v => v === target ? 'highlight' : '');
+    }
+
+    const bMaxRange = best(metrics.map(m => m.m.maxRange));
+    const bTotalRange = best(metrics.map(m => m.m.totalRange));
+    const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
+    const bQuality = best(metrics.map(m => m.q.overall), false);
+
+    document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
+    document.getElementById('tab-compare').innerHTML = `
+      <table class="compare-table">
+        <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
+          <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
+          <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
+          <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
+          <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
+        ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
+      </p>
+    `;
+
+    // Tab badges with quality scores
+    genders.forEach(g => {
+      ['elastic', 'split'].forEach(key => {
+        if (g.res[key]) {
+          // Use first gender's scores for badges (combined would be misleading)
+        }
+      });
+    });
+    // Combined quality for tab badges
+    systemKeys.forEach(key => {
+      const allGroups = [];
+      genders.forEach(g => { if (g.res[key]) allGroups.push(...g.res[key]); });
+      if (allGroups.length) {
+        const q = calculateQualityScore(allGroups, allSorted);
+        const tabMap = { elastic: '.tab-elastic', split: '.tab-split', fixed: '.tab-fixed' };
+        const labelMap = { elastic: t('tabElastic'), split: t('tabSplit'), fixed: t('tabFixed') };
+        const btn = document.querySelector(tabMap[key]);
+        if (btn) btn.innerHTML = `${labelMap[key]} <span class="quality-badge ${qualityClass(q.overall)}">${q.overall}</span>`;
+      }
+    });
+
+    // Chart tab — build combined res for chart
+    document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
+    const combinedRes = { elastic: [], split: [], fixed: hasFixed ? [] : null };
+    genders.forEach(g => {
+      if (g.res.elastic) combinedRes.elastic.push(...g.res.elastic);
+      if (g.res.split) combinedRes.split.push(...g.res.split);
+      if (hasFixed && g.res.fixed) combinedRes.fixed.push(...g.res.fixed);
+    });
+    renderChart(combinedRes, allSorted);
   }
 }
 
