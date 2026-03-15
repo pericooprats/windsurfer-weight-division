@@ -428,7 +428,7 @@ tr:hover td { background: var(--sky-pale); }
             <input type="text" id="inputNationality" maxlength="3" placeholder="ESP" style="text-transform:uppercase">
           </div>
           <div class="form-group" style="flex:1">
-            <label data-i18n="sailNumber">N.º Vela</label>
+            <label data-i18n="sailNumber">Vela</label>
             <input type="text" id="inputSailNumber" placeholder="—">
           </div>
           <div class="form-group" style="flex:0;justify-content:flex-end">
@@ -444,7 +444,7 @@ tr:hover td { background: var(--sky-pale); }
               <tr>
                 <th>#</th>
                 <th data-i18n="nationality">País</th>
-                <th data-i18n="sailNumber">N.º Vela</th>
+                <th data-i18n="sailNumber">Vela</th>
                 <th data-i18n="name">Nombre</th>
                 <th data-i18n="weightKg">Peso (kg)</th>
                 <th data-i18n="age">Edad</th>
@@ -563,7 +563,7 @@ const i18n = {
     weightKg: "Peso (kg)",
     age: "Edad",
     nationality: "País",
-    sailNumber: "N.º Vela",
+    sailNumber: "Vela",
     add: "Añadir",
     total: "Total",
     exportCSV: "Exportar CSV",
@@ -647,7 +647,7 @@ const i18n = {
     weightKg: "Weight (kg)",
     age: "Age",
     nationality: "Country",
-    sailNumber: "Sail No.",
+    sailNumber: "Sail",
     add: "Add",
     total: "Total",
     exportCSV: "Export CSV",
@@ -827,7 +827,7 @@ function parseCSV(text) {
 
 function exportCSV() {
   if (!competitors.length) return;
-  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad,País,N.º Vela\n' : 'Name,Weight,Age,Country,Sail No.\n';
+  let csv = currentLang === 'es' ? 'Nombre,Peso,Edad,País,Vela\n' : 'Name,Weight,Age,Country,Sail\n';
   competitors.sort((a,b) => a.weight - b.weight).forEach(c => {
     csv += `${c.name},${c.weight},${c.age||''},${c.nationality||''},${c.sailNumber||''}\n`;
   });
@@ -1468,8 +1468,8 @@ function exportGroupsCSV() {
   const groupNames = [t('groupA'), t('groupB'), t('groupC'), t('groupD')];
   
   let csv = currentLang === 'es'
-    ? 'Grupo,Nombre,Peso (kg),Edad,País,N.º Vela,Sistema\n'
-    : 'Group,Name,Weight (kg),Age,Country,Sail No.,System\n';
+    ? 'Grupo,Nombre,Peso (kg),Edad,País,Vela,Sistema\n'
+    : 'Group,Name,Weight (kg),Age,Country,Sail,System\n';
 
   const systems = [
     { name: t('elastic'), groups: lastResults.elastic },
