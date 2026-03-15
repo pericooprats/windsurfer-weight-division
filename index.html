@@ -429,9 +429,11 @@ tr:hover td { background: var(--sky-pale); }
             <label data-i18n="sailNumber">Vela</label>
             <input type="text" id="inputSailNumber" placeholder="—">
           </div>
-          <div class="form-group" style="flex:1">
+          <div class="form-group" style="flex:1.5">
             <label data-i18n="nationality">País</label>
-            <input type="text" id="inputNationality" maxlength="3" placeholder="ESP" style="text-transform:uppercase">
+            <select id="inputNationality">
+              <option value="">—</option>
+            </select>
           </div>
           <div class="form-group" style="flex:1">
             <label data-i18n="age">Edad</label>
@@ -740,6 +742,8 @@ function setLang(lang) {
   });
   // Re-render results if present
   if (lastResults) renderResults(lastResults);
+  // Update nationality selector labels
+  if (typeof populateNationalitySelect === 'function') populateNationalitySelect();
 }
 function t(key) { return i18n[currentLang][key] || key; }
 
@@ -758,12 +762,80 @@ function countryFlag(code) {
   return String.fromCodePoint(...[...iso].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
+const COUNTRY_LIST = [
+  {code:'ESP',name:'España',nameEn:'Spain'},
+  {code:'FRA',name:'Francia',nameEn:'France'},
+  {code:'ITA',name:'Italia',nameEn:'Italy'},
+  {code:'GER',name:'Alemania',nameEn:'Germany'},
+  {code:'POR',name:'Portugal',nameEn:'Portugal'},
+  {code:'NED',name:'Países Bajos',nameEn:'Netherlands'},
+  {code:'GBR',name:'Reino Unido',nameEn:'United Kingdom'},
+  {code:'SWE',name:'Suecia',nameEn:'Sweden'},
+  {code:'NOR',name:'Noruega',nameEn:'Norway'},
+  {code:'DEN',name:'Dinamarca',nameEn:'Denmark'},
+  {code:'FIN',name:'Finlandia',nameEn:'Finland'},
+  {code:'SUI',name:'Suiza',nameEn:'Switzerland'},
+  {code:'AUT',name:'Austria',nameEn:'Austria'},
+  {code:'POL',name:'Polonia',nameEn:'Poland'},
+  {code:'CZE',name:'Chequia',nameEn:'Czech Republic'},
+  {code:'HUN',name:'Hungría',nameEn:'Hungary'},
+  {code:'CRO',name:'Croacia',nameEn:'Croatia'},
+  {code:'GRE',name:'Grecia',nameEn:'Greece'},
+  {code:'TUR',name:'Turquía',nameEn:'Turkey'},
+  {code:'RUS',name:'Rusia',nameEn:'Russia'},
+  {code:'UKR',name:'Ucrania',nameEn:'Ukraine'},
+  {code:'IRL',name:'Irlanda',nameEn:'Ireland'},
+  {code:'BEL',name:'Bélgica',nameEn:'Belgium'},
+  {code:'LUX',name:'Luxemburgo',nameEn:'Luxembourg'},
+  {code:'ROU',name:'Rumanía',nameEn:'Romania'},
+  {code:'BUL',name:'Bulgaria',nameEn:'Bulgaria'},
+  {code:'SRB',name:'Serbia',nameEn:'Serbia'},
+  {code:'SLO',name:'Eslovenia',nameEn:'Slovenia'},
+  {code:'SVK',name:'Eslovaquia',nameEn:'Slovakia'},
+  {code:'LTU',name:'Lituania',nameEn:'Lithuania'},
+  {code:'LAT',name:'Letonia',nameEn:'Latvia'},
+  {code:'EST',name:'Estonia',nameEn:'Estonia'},
+  {code:'JPN',name:'Japón',nameEn:'Japan'},
+  {code:'AUS',name:'Australia',nameEn:'Australia'},
+  {code:'NZL',name:'Nueva Zelanda',nameEn:'New Zealand'},
+  {code:'USA',name:'Estados Unidos',nameEn:'United States'},
+  {code:'CAN',name:'Canadá',nameEn:'Canada'},
+  {code:'BRA',name:'Brasil',nameEn:'Brazil'},
+  {code:'ARG',name:'Argentina',nameEn:'Argentina'},
+  {code:'CHI',name:'Chile',nameEn:'Chile'},
+  {code:'MEX',name:'México',nameEn:'Mexico'},
+  {code:'COL',name:'Colombia',nameEn:'Colombia'},
+  {code:'IND',name:'India',nameEn:'India'},
+  {code:'ISR',name:'Israel',nameEn:'Israel'},
+  {code:'RSA',name:'Sudáfrica',nameEn:'South Africa'},
+  {code:'CHN',name:'China',nameEn:'China'},
+  {code:'KOR',name:'Corea del Sur',nameEn:'South Korea'},
+  {code:'THA',name:'Tailandia',nameEn:'Thailand'},
+  {code:'MAS',name:'Malasia',nameEn:'Malaysia'},
+  {code:'SGP',name:'Singapur',nameEn:'Singapore'},
+];
+
+function populateNationalitySelect() {
+  const select = document.getElementById('inputNationality');
+  const currentVal = select.value;
+  // Keep the first "—" option
+  while (select.options.length > 1) select.remove(1);
+  const isEn = currentLang === 'en';
+  COUNTRY_LIST.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = countryFlag(c.code) + ' ' + (isEn ? c.nameEn : c.name) + ' (' + c.code + ')';
+    select.appendChild(opt);
+  });
+  if (currentVal) select.value = currentVal;
+}
+
 function addCompetitor(name, gender, sailNumber, nationality, age, weight) {
   if (!name) {
     name = document.getElementById('inputName').value.trim();
     gender = document.getElementById('inputGender').value || null;
     sailNumber = document.getElementById('inputSailNumber').value.trim() || null;
-    nationality = document.getElementById('inputNationality').value.trim().toUpperCase() || null;
+    nationality = document.getElementById('inputNationality').value || null;
     age = document.getElementById('inputAge').value ? parseInt(document.getElementById('inputAge').value) : null;
     weight = parseFloat(document.getElementById('inputWeight').value);
   }
@@ -1530,6 +1602,7 @@ function showTab(tab) {
 }
 
 // Init
+populateNationalitySelect();
 updateParamDisplay();
 
 // Register Service Worker for offline support
