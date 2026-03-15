@@ -776,6 +776,9 @@ const i18n = {
     minCompetitorsN: "Se necesitan al menos {n} regatistas",
     fixedDisabled: "El sistema Fijo solo está disponible con 4 grupos",
     manualEntry: "Añadir manualmente",
+    tooltipQuality: "Media de equilibrio de tamaño y homogeneidad de peso (0-100). Cuanto más alto, mejor repartida está la flota.",
+    tooltipSizeBalance: "Mide lo equilibrados que están los grupos en número de regatistas (0-100). 100 = todos los grupos tienen el mismo tamaño.",
+    tooltipWeightHomogeneity: "Mide lo compactos que son los grupos en rango de peso (0-100). 100 = cada grupo tiene un rango de peso mínimo.",
   },
   en: {
     title: "Elastic Weight Division",
@@ -879,6 +882,9 @@ const i18n = {
     minCompetitorsN: "At least {n} competitors are required",
     fixedDisabled: "Fixed system is only available with 4 groups",
     manualEntry: "Add manually",
+    tooltipQuality: "Average of size balance and weight homogeneity (0-100). The higher, the better the fleet is divided.",
+    tooltipSizeBalance: "Measures how balanced the groups are in number of competitors (0-100). 100 = all groups have the same size.",
+    tooltipWeightHomogeneity: "Measures how compact each group's weight range is (0-100). 100 = each group has a minimal weight spread.",
   }
 };
 
@@ -1582,9 +1588,9 @@ function calcMetrics(groups, totalCompetitors) {
 function renderQualityChips(groups, sorted) {
   const q = calculateQualityScore(groups, sorted);
   return `<div class="metrics-bar" style="margin-bottom:12px">
-    <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('qualityScore')}: <span class="val quality-badge ${qualityClass(q.overall)}">${q.overall}</span></div>
-    <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('sizeBalance')}: <span class="val">${q.sizeScore}</span></div>
-    <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('weightHomogeneity')}: <span class="val">${q.rangeScore}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('qualityScore')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipQuality')}</span></span>: <span class="val quality-badge ${qualityClass(q.overall)}">${q.overall}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('sizeBalance')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipSizeBalance')}</span></span>: <span class="val">${q.sizeScore}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('weightHomogeneity')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipWeightHomogeneity')}</span></span>: <span class="val">${q.rangeScore}</span></div>
   </div>`;
 }
 
