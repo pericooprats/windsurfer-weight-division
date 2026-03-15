@@ -107,13 +107,13 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1px solid var(--gray-200);
-  overflow: hidden;
 }
 .card-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--gray-100);
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 8px;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .card-header h2 {
   font-size: 15px; font-weight: 600; color: var(--gray-800);
@@ -207,15 +207,43 @@ tr:hover td { background: var(--sky-pale); }
 }
 
 /* --- PARAMETERS --- */
-.param-slider { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.param-slider label { min-width: 160px; font-size: 13px; font-weight: 500; }
+.param-slider { margin-bottom: 16px; }
+.param-slider .param-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.param-slider .param-row input[type="range"] { flex: 1; accent-color: var(--blue); }
+.param-slider label { font-size: 13px; font-weight: 500; }
 .param-slider input[type="range"] { flex: 1; accent-color: var(--blue); }
 .param-value {
-  min-width: 52px; text-align: center; font-family: var(--mono);
-  font-size: 14px; font-weight: 500; color: var(--blue);
-  background: var(--sky-pale); padding: 4px 10px; border-radius: var(--radius-sm);
+  min-width: 40px; text-align: center; font-family: var(--mono);
+  font-size: 13px; font-weight: 500; color: var(--blue);
+  background: var(--sky-pale); padding: 3px 6px; border-radius: var(--radius-sm);
 }
 .param-note { font-size: 11px; color: var(--gray-400); margin-top: -10px; margin-bottom: 14px; margin-left: 172px; }
+
+/* --- TOOLTIPS --- */
+.param-label-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.param-label-wrap label { min-width: unset; }
+.tooltip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--gray-200);
+  color: var(--gray-500); font-size: 11px; font-weight: 700; cursor: help;
+  position: relative; flex-shrink: 0; line-height: 1;
+}
+.tooltip-icon:hover { background: var(--blue); color: #fff; }
+.tooltip-icon .tooltip-text {
+  visibility: hidden; opacity: 0;
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  width: 260px; padding: 10px 12px; border-radius: 8px;
+  background: #1e293b; color: #ffffff; font-size: 12px; font-weight: 400;
+  line-height: 1.5; text-align: left; z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+}
+.tooltip-icon .tooltip-text::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: #1e293b;
+}
+.tooltip-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
 
 /* --- RESULTS --- */
 .results-section { margin-top: 24px; }
@@ -327,8 +355,10 @@ tr:hover td { background: var(--sky-pale); }
   .card-body { padding: 14px; }
   .form-row { flex-direction: column; }
   .param-slider { flex-wrap: wrap; }
-  .param-slider label { min-width: 100%; }
+  .param-slider label { min-width: unset; }
+  .param-label-wrap { min-width: 100%; }
   .param-note { margin-left: 0; }
+  .tooltip-icon .tooltip-text { left: 0; transform: none; width: 220px; }
   .groups-grid { grid-template-columns: 1fr; }
 }
 
@@ -481,25 +511,37 @@ tr:hover td { background: var(--sky-pale); }
       </div>
       <div class="card-body">
         <div class="param-slider">
-          <label data-i18n="maxRange">Rango máx. por grupo</label>
-          <input type="range" id="paramRange" min="4" max="20" value="8" oninput="updateParamDisplay()">
-          <div class="param-value" id="paramRangeVal">8 kg</div>
+          <div class="param-label-wrap">
+            <label data-i18n="maxRange">Rango máx. por grupo</label>
+            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipRange"></span></span>
+          </div>
+          <div class="param-row">
+            <input type="range" id="paramRange" min="4" max="20" value="8" oninput="updateParamDisplay()">
+            <div class="param-value" id="paramRangeVal">8 kg</div>
+          </div>
         </div>
-        <div class="param-note" data-i18n="maxRangeNote">Diferencia máxima entre el más ligero y el más pesado del grupo</div>
 
         <div class="param-slider">
-          <label data-i18n="maxPercent">Tamaño máx. por grupo</label>
-          <input type="range" id="paramPercent" min="26" max="50" value="33" oninput="updateParamDisplay()">
-          <div class="param-value" id="paramPercentVal">33%</div>
+          <div class="param-label-wrap">
+            <label data-i18n="maxPercent">Tamaño máx. por grupo</label>
+            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipPercent"></span></span>
+          </div>
+          <div class="param-row">
+            <input type="range" id="paramPercent" min="26" max="50" value="33" oninput="updateParamDisplay()">
+            <div class="param-value" id="paramPercentVal">33%</div>
+          </div>
         </div>
-        <div class="param-note" data-i18n="maxPercentNote">Porcentaje máximo de la flota en un solo grupo</div>
 
         <div class="param-slider">
-          <label data-i18n="ageFactor">Factor de edad</label>
-          <input type="range" id="paramAge" min="0" max="10" value="0" oninput="updateParamDisplay()">
-          <div class="param-value" id="paramAgeVal">0</div>
+          <div class="param-label-wrap">
+            <label data-i18n="ageFactor">Factor de edad</label>
+            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipAge"></span></span>
+          </div>
+          <div class="param-row">
+            <input type="range" id="paramAge" min="0" max="10" value="0" oninput="updateParamDisplay()">
+            <div class="param-value" id="paramAgeVal">0</div>
+          </div>
         </div>
-        <div class="param-note" data-i18n="ageFactorNote">0 = desactivado, 10 = máxima prioridad a agrupar por edad</div>
 
         <div style="margin-top:24px">
           <button class="btn btn-success" onclick="runAlgorithm()" style="width:100%;justify-content:center;padding:12px;font-size:15px" data-i18n="calculate">
@@ -585,10 +627,13 @@ const i18n = {
     parameters: "Parámetros",
     maxRange: "Rango máx. por grupo",
     maxRangeNote: "Diferencia máxima entre el más ligero y el más pesado del grupo",
+    tooltipRange: "Diferencia máxima de peso (en kg) permitida dentro de un grupo. Ej: con 8 kg, si el más ligero pesa 72 kg, el más pesado no podrá superar 80 kg. Valores bajos → grupos más homogéneos pero quizá desiguales en tamaño.",
     maxPercent: "Tamaño máx. por grupo",
     maxPercentNote: "Porcentaje máximo de la flota en un solo grupo",
+    tooltipPercent: "Porcentaje máximo de competidores que puede tener un solo grupo. Ej: con 33% y 30 regatistas, ningún grupo tendrá más de 10. Evita que un grupo acumule demasiados participantes.",
     ageFactor: "Factor de edad",
     ageFactorNote: "0 = desactivado, 10 = máxima prioridad a agrupar por edad",
+    tooltipAge: "Prioridad para mantener juntos a competidores de la misma categoría de edad (Junior, Youth, Master, etc.). En 0 se ignora la edad. A medida que sube, el algoritmo penaliza repartir una categoría en varios grupos, aunque eso pueda empeorar ligeramente el equilibrio de pesos.",
     calculate: "Calcular división",
     results: "Resultados",
     print: "Imprimir / PDF",
@@ -671,10 +716,13 @@ const i18n = {
     parameters: "Parameters",
     maxRange: "Max range per group",
     maxRangeNote: "Maximum difference between lightest and heaviest in a group",
+    tooltipRange: "Maximum weight difference (in kg) allowed within a group. E.g. with 8 kg, if the lightest weighs 72 kg, the heaviest cannot exceed 80 kg. Lower values → more homogeneous groups but possibly unbalanced sizes.",
     maxPercent: "Max group size",
     maxPercentNote: "Maximum percentage of fleet in a single group",
+    tooltipPercent: "Maximum percentage of competitors a single group can have. E.g. with 33% and 30 sailors, no group will have more than 10. Prevents one group from accumulating too many participants.",
     ageFactor: "Age factor",
     ageFactorNote: "0 = disabled, 10 = maximum priority to age grouping",
+    tooltipAge: "Priority for keeping competitors of the same age category together (Junior, Youth, Master, etc.). At 0 age is ignored. As it increases, the algorithm penalises spreading a category across multiple groups, even if it slightly worsens weight balance.",
     calculate: "Calculate division",
     results: "Results",
     print: "Print / PDF",
@@ -744,6 +792,8 @@ function setLang(lang) {
   if (lastResults) renderResults(lastResults);
   // Update nationality selector labels
   if (typeof populateNationalitySelect === 'function') populateNationalitySelect();
+  // Update tooltip texts
+  if (typeof updateTooltips === 'function') updateTooltips();
 }
 function t(key) { return i18n[currentLang][key] || key; }
 
@@ -1601,8 +1651,15 @@ function showTab(tab) {
   document.getElementById(`tab-${tab}`).classList.add('active');
 }
 
+function updateTooltips() {
+  document.getElementById('tooltipRange').textContent = t('tooltipRange');
+  document.getElementById('tooltipPercent').textContent = t('tooltipPercent');
+  document.getElementById('tooltipAge').textContent = t('tooltipAge');
+}
+
 // Init
 populateNationalitySelect();
+updateTooltips();
 updateParamDisplay();
 
 // Register Service Worker for offline support

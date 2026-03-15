@@ -69,6 +69,53 @@ Only **Name** and **Weight** are required. Gender (M/F), Sail number, Country an
 | ISR | Israel | RSA | South Africa | CHN | China |
 | KOR | South Korea | THA | Thailand | IND | India |
 
+## Parameters
+
+### Maximum weight range per group (default: 8 kg)
+
+Maximum weight difference (in kg) allowed within a single group. For example, with 8 kg, if the lightest sailor in a group weighs 72 kg, the heaviest cannot exceed 80 kg.
+
+- **Lower values** (4–6 kg) → more homogeneous groups, but may produce unequal group sizes
+- **Higher values** (10–20 kg) → more flexibility for balanced sizes, but wider weight spread within groups
+
+### Maximum group size (default: 33%)
+
+Maximum percentage of the total fleet that any single group can contain. For example, with 33% and 30 sailors, no group will exceed 10 competitors.
+
+- **Lower values** (26–30%) → forces very even group sizes
+- **Higher values** (40–50%) → allows more flexibility, useful when weight distribution is very uneven
+
+### Age factor (default: 0)
+
+Controls how much priority the algorithm gives to keeping competitors of the same age category together. Scale from 0 to 10.
+
+The algorithm scores each possible partition using a cost function:
+
+```
+cost = α × sizeBalance + β × weightRange + γ × agePenalty
+```
+
+Where `γ = ageFactor / 10`. The **agePenalty** measures how many age categories (Junior, Youth, Master, G.Master, Legend, S.Legend) are fragmented across multiple groups. The **Open** category (ages 20–39) is always excluded from this calculation as it is typically the largest.
+
+| Value | Effect |
+|-------|--------|
+| **0** | Age is ignored — optimises only for weight and group size |
+| **1–4** | Mild preference — tries to keep age categories together without sacrificing much weight balance |
+| **5–7** | Balanced — meaningful trade-off between weight homogeneity and age grouping |
+| **8–10** | Strong priority — will accept slightly worse weight distribution to keep juniors, masters, etc. together |
+
+**Age categories:**
+
+| Category | Age range |
+|----------|-----------|
+| Junior | Under 15 |
+| Youth | 15–19 |
+| Open | 20–39 |
+| Master | 40–49 |
+| G.Master | 50–59 |
+| Legend | 60–69 |
+| S.Legend | 70+ |
+
 ## Algorithm
 
 1. Sort competitors by weight (ties broken by age per IWCA Rule H.3.3.2.ii)
