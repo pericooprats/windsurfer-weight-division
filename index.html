@@ -251,13 +251,16 @@ tr:hover td { background: var(--sky-pale); }
 
 .system-tabs {
   display: flex; gap: 0; background: var(--gray-100); border-radius: var(--radius) var(--radius) 0 0;
-  overflow: hidden; border: 1px solid var(--gray-200); border-bottom: none;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--gray-200); border-bottom: none;
+  scrollbar-width: none;
 }
+.system-tabs::-webkit-scrollbar { display: none; }
 .system-tab {
-  flex: 1; padding: 12px 16px; border: none; background: none;
+  flex: 1 0 auto; padding: 12px 16px; border: none; background: none;
   font-family: var(--font); font-size: 13px; font-weight: 500;
   color: var(--gray-500); cursor: pointer; transition: all .2s;
-  text-align: center; position: relative;
+  text-align: center; position: relative; white-space: nowrap;
 }
 .system-tab.active { background: white; color: var(--gray-800); }
 .system-tab.tab-fixed.active { border-top: 3px solid var(--amber); }
@@ -776,6 +779,9 @@ const i18n = {
     minCompetitorsN: "Se necesitan al menos {n} regatistas",
     fixedDisabled: "El sistema Fijo solo está disponible con 4 grupos",
     manualEntry: "Añadir manualmente",
+    tooltipQuality: "Media de equilibrio de tamaño y homogeneidad de peso (0-100). Cuanto más alto, mejor repartida está la flota.",
+    tooltipSizeBalance: "Mide lo equilibrados que están los grupos en número de regatistas (0-100). 100 = todos los grupos tienen el mismo tamaño.",
+    tooltipWeightHomogeneity: "Mide lo compactos que son los grupos en rango de peso (0-100). 100 = cada grupo tiene un rango de peso mínimo.",
   },
   en: {
     title: "Elastic Weight Division",
@@ -879,6 +885,9 @@ const i18n = {
     minCompetitorsN: "At least {n} competitors are required",
     fixedDisabled: "Fixed system is only available with 4 groups",
     manualEntry: "Add manually",
+    tooltipQuality: "Average of size balance and weight homogeneity (0-100). The higher, the better the fleet is divided.",
+    tooltipSizeBalance: "Measures how balanced the groups are in number of competitors (0-100). 100 = all groups have the same size.",
+    tooltipWeightHomogeneity: "Measures how compact each group's weight range is (0-100). 100 = each group has a minimal weight spread.",
   }
 };
 
@@ -1582,10 +1591,36 @@ function calcMetrics(groups, totalCompetitors) {
 function renderQualityChips(groups, sorted) {
   const q = calculateQualityScore(groups, sorted);
   return `<div class="metrics-bar" style="margin-bottom:12px">
-    <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('qualityScore')}: <span class="val quality-badge ${qualityClass(q.overall)}">${q.overall}</span></div>
-    <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('sizeBalance')}: <span class="val">${q.sizeScore}</span></div>
-    <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('weightHomogeneity')}: <span class="val">${q.rangeScore}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--navy)"></span> ${t('qualityScore')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipQuality')}</span></span>: <span class="val quality-badge ${qualityClass(q.overall)}">${q.overall}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--blue)"></span> ${t('sizeBalance')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipSizeBalance')}</span></span>: <span class="val">${q.sizeScore}</span></div>
+    <div class="metric-chip"><span class="dot" style="background:var(--teal)"></span> ${t('weightHomogeneity')} <span class="tooltip-icon">?<span class="tooltip-text">${t('tooltipWeightHomogeneity')}</span></span>: <span class="val">${q.rangeScore}</span></div>
   </div>`;
+}
+
+function renderCompareTable(metrics) {
+  function best(vals, lower=true) {
+    const target = lower ? Math.min(...vals) : Math.max(...vals);
+    return vals.map(v => v === target ? 'highlight' : '');
+  }
+  const bMaxRange = best(metrics.map(m => m.m.maxRange));
+  const bTotalRange = best(metrics.map(m => m.m.totalRange));
+  const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
+  const bQuality = best(metrics.map(m => m.q.overall), false);
+
+  return `<div style="overflow-x:auto">
+    <table class="compare-table">
+      <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
+      <tbody>
+        <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
+        <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
+        <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
+        <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
+        <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
+      ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
+    </p>`;
 }
 
 function renderSingleFleetResults(res, sorted) {
@@ -1635,33 +1670,8 @@ function renderSingleFleetResults(res, sorted) {
   systems.push({ key: 'elastic', label: t('elastic'), groups: res.elastic });
 
   const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, sorted) }));
-
-  function best(vals, lower=true) {
-    const target = lower ? Math.min(...vals) : Math.max(...vals);
-    return vals.map(v => v === target ? 'highlight' : '');
-  }
-
-  const bMaxRange = best(metrics.map(m => m.m.maxRange));
-  const bTotalRange = best(metrics.map(m => m.m.totalRange));
-  const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
-  const bQuality = best(metrics.map(m => m.q.overall), false);
-
   document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
-  document.getElementById('tab-compare').innerHTML = `
-    <table class="compare-table">
-      <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
-      <tbody>
-        <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
-        <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
-        <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
-        <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
-        <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
-      </tbody>
-    </table>
-    <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
-      ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
-    </p>
-  `;
+  document.getElementById('tab-compare').innerHTML = renderCompareTable(metrics);
 
   // Update tab badges
   const elasticQ = calculateQualityScore(res.elastic, sorted);
@@ -1754,33 +1764,8 @@ function renderResults(res) {
     });
 
     const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, allSorted) }));
-
-    function best(vals, lower=true) {
-      const target = lower ? Math.min(...vals) : Math.max(...vals);
-      return vals.map(v => v === target ? 'highlight' : '');
-    }
-
-    const bMaxRange = best(metrics.map(m => m.m.maxRange));
-    const bTotalRange = best(metrics.map(m => m.m.totalRange));
-    const bVariance = best(metrics.map(m => parseFloat(m.m.sizeVariance)));
-    const bQuality = best(metrics.map(m => m.q.overall), false);
-
     document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
-    document.getElementById('tab-compare').innerHTML = `
-      <table class="compare-table">
-        <thead><tr><th>${t('aspect')}</th>${metrics.map(m => `<th>${m.label}</th>`).join('')}</tr></thead>
-        <tbody>
-          <tr><td><strong>${t('groupSizes')}</strong></td>${metrics.map(m => `<td>${m.m.sizes.join(' / ')}</td>`).join('')}</tr>
-          <tr><td><strong>${t('maxInternalRange')}</strong></td>${metrics.map((m,i) => `<td class="${bMaxRange[i]}">${m.m.maxRange.toFixed(1)} kg</td>`).join('')}</tr>
-          <tr><td><strong>${t('totalRangeSum')}</strong></td>${metrics.map((m,i) => `<td class="${bTotalRange[i]}">${m.m.totalRange.toFixed(1)} kg</td>`).join('')}</tr>
-          <tr><td><strong>${t('sizeVariance')}</strong></td>${metrics.map((m,i) => `<td class="${bVariance[i]}">${m.m.sizeVariance}</td>`).join('')}</tr>
-          <tr><td><strong>${t('qualityScore')}</strong></td>${metrics.map((m,i) => `<td class="${bQuality[i]}"><span class="quality-badge ${qualityClass(m.q.overall)}">${m.q.overall}</span></td>`).join('')}</tr>
-        </tbody>
-      </table>
-      <p style="font-size:12px;color:var(--gray-400);margin-top:12px;text-align:center">
-        ${t('scoreLabel')} — <span class="best-label" style="background:var(--teal-light);padding:2px 8px;border-radius:4px;font-weight:600">${t('best')}</span>
-      </p>
-    `;
+    document.getElementById('tab-compare').innerHTML = renderCompareTable(metrics);
 
     // Tab badges with quality scores
     genders.forEach(g => {
