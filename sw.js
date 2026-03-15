@@ -1,4 +1,4 @@
-const CACHE_NAME = 'windsurfer-ewd-v2';
+const CACHE_NAME = 'windsurfer-ewd-v3';
 const ASSETS = [
   './',
   './index.html',
