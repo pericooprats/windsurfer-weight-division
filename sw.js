@@ -1,4 +1,4 @@
-const CACHE_NAME = 'windsurfer-ewd-v3';
+const CACHE_NAME = 'windsurfer-ewd-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -25,24 +25,30 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: serve from cache first, fallback to network
+// Fetch: network-first for HTML navigation, cache-first for everything else
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache new requests dynamically (e.g. Google Fonts)
-        if (response.ok && event.request.method === 'GET') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
+  if (event.request.mode === 'navigate') {
+    // Always try to fetch fresh HTML; fall back to cache if offline
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
-      }).catch(() => {
-        // Offline fallback for navigation
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
-  );
+      }).catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
+    );
+  } else {
+    // Cache-first for static assets (icons, manifest…)
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return fetch(event.request).then(response => {
+          if (response.ok && event.request.method === 'GET') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+  }
 });
