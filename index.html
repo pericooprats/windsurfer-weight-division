@@ -1829,7 +1829,7 @@ function renderResults(res) {
       genders.forEach(g => {
         if (g.res[key]) {
           const gSorted = g.res.sorted || [];
-          compareMetrics.push({ key, label: `${compareLabelMap[key]} ${g.cls === 'male' ? '♂' : '♀'}`, groups: g.res[key], m: calcMetrics(g.res[key]), q: calculateQualityScore(g.res[key], gSorted) });
+          compareMetrics.push({ key, label: `${compareLabelMap[key]} ${g.cls === 'male' ? 'M' : 'F'}`, groups: g.res[key], m: calcMetrics(g.res[key]), q: calculateQualityScore(g.res[key], gSorted) });
         }
       });
     });
@@ -1914,10 +1914,10 @@ function renderChart(res, sorted, genderMaps) {
   }
 
   const systems = [
-    { name: t('elastic'), groups: res.elastic, color: '#0d9488', bg: '#ccfbf1' },
+    { key: 'elastic', name: t('elastic'), groups: res.elastic, color: '#0d9488', bg: '#ccfbf1' },
   ];
-  if (res.fixed) systems.push({ name: t('fixed'), groups: res.fixed, color: '#d97706', bg: '#fef3c7' });
-  systems.push({ name: t('split'), groups: res.split, color: '#2563eb', bg: '#dbeafe' });
+  if (res.fixed) systems.push({ key: 'fixed', name: t('fixed'), groups: res.fixed, color: '#d97706', bg: '#fef3c7' });
+  systems.push({ key: 'split', name: t('split'), groups: res.split, color: '#2563eb', bg: '#dbeafe' });
 
   const svgH = topMargin + systems.length * rowH + botMargin;
   const groupColors = GROUP_COLORS;
@@ -2018,7 +2018,7 @@ function renderChart(res, sorted, genderMaps) {
   });
 
   const genderLegend = genderMaps
-    ? ` &nbsp;·&nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="3.5" fill="#475569"/></svg> ${t('maleFleet')} &nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="4" fill="white" stroke="#475569" stroke-width="1.5"/></svg> ${t('femaleFleet')}`
+    ? ` &nbsp;·&nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="3.5" fill="#475569"/></svg> M &nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="4" fill="white" stroke="#475569" stroke-width="1.5"/></svg> F`
     : '';
   html += `</svg>
     <p style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center">${t('chartLegend')}${genderLegend}</p>
