@@ -1097,10 +1097,9 @@ function displayAgeClass(age) {
 }
 
 function renderCompetitors() {
-  const sorted = [...competitors].sort((a,b) => a.weight - b.weight);
   const tbody = document.getElementById('competitorBody');
-  tbody.innerHTML = sorted.map((c, i) => {
-    const origIdx = competitors.indexOf(c);
+  tbody.innerHTML = competitors.map((c, i) => {
+    const origIdx = i;
     return `<tr>
       <td>${i+1}</td>
       <td>${c.name}</td>
@@ -1639,7 +1638,7 @@ function renderGroupCards(groups, systemName) {
       <div class="stat"><span class="stat-label">${t('minWeight')}</span><span class="stat-value">${s.count ? s.min.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('maxWeight')}</span><span class="stat-value">${s.count ? s.max.toFixed(1) : '—'} kg</span></div>
       <div class="stat"><span class="stat-label">${t('avgWeight')}</span><span class="stat-value">${s.count ? s.avg.toFixed(1) : '—'} kg</span></div>
-      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.gender ? ' [' + c.gender + ']' : '') + (c.sailNumber ? ' (' + c.sailNumber + ')' : '')).join(', ') || '—'}</div>
+      <div class="members"><strong>${t('members')}:</strong> ${s.members.map(c => (c.nationality ? countryFlag(c.nationality) + ' ' : '') + c.name + (c.gender ? ' [' + c.gender + ']' : '') + (c.sailNumber ? ' (' + c.sailNumber + ')' : '') + ' ' + c.weight + ' kg').join(', ') || '—'}</div>
     </div>
   `).join('')}</div>`;
 }
