@@ -288,6 +288,9 @@ tr:hover td { background: var(--sky-pale); }
 .group-card.group-c { background: #fefce8; border-color: #eab308; }
 .group-card.group-d { background: #fef2f2; border-color: #ef4444; }
 .group-card.group-e { background: #f5f3ff; border-color: #8b5cf6; }
+.group-card.group-f { background: #fff7ed; border-color: #f97316; }
+.group-card.group-g { background: #ecfeff; border-color: #06b6d4; }
+.group-card.group-h { background: #fdf2f8; border-color: #ec4899; }
 .group-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
 .group-card .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
 .group-card .stat-label { color: var(--gray-500); }
@@ -500,7 +503,7 @@ tr:hover td { background: var(--sky-pale); }
         <div class="drop-zone no-print" id="dropZone" onclick="document.getElementById('csvInput').click()">
           <div class="icon">📄</div>
           <p><strong data-i18n="csvDrop">Arrastra un CSV aquí o haz clic para seleccionar</strong></p>
-          <p data-i18n="csvFormat">Formato: nombre, peso (kg), edad (opcional)</p>
+          <p data-i18n="csvFormat">Formato: nombre, sexo, vela, país, edad, peso (kg)</p>
           <input type="file" id="csvInput" accept=".csv,.txt" onchange="handleCSV(event)">
         </div>
 
@@ -515,9 +518,9 @@ tr:hover td { background: var(--sky-pale); }
             <div class="form-group">
               <label data-i18n="genProfile">Perfil de pesos</label>
               <select id="genProfile">
-                <option value="normal" data-i18n-opt="genNormal">Normal (73-83 kg)</option>
+                <option value="normal" data-i18n-opt="genNormal">Normal (55-115 kg)</option>
                 <option value="wide" data-i18n-opt="genWide">Disperso (55-115 kg)</option>
-                <option value="clustered" data-i18n-opt="genClustered">Concentrado (74-80 kg)</option>
+                <option value="clustered" data-i18n-opt="genClustered">Concentrado (72-82 kg)</option>
                 <option value="bimodal" data-i18n-opt="genBimodal">Bimodal (2 picos)</option>
               </select>
             </div>
@@ -582,7 +585,7 @@ tr:hover td { background: var(--sky-pale); }
         </div>
 
         <!-- Competitors table -->
-        <div class="competitor-list" id="competitorList">
+        <div class="competitor-list" id="competitorList" style="display:none">
           <table id="competitorTable">
             <thead>
               <tr>
@@ -599,7 +602,7 @@ tr:hover td { background: var(--sky-pale); }
             <tbody id="competitorBody"></tbody>
           </table>
         </div>
-        <div class="competitor-count">
+        <div class="competitor-count" style="display:none">
           <span><span data-i18n="total">Total</span>: <strong id="totalCount">0</strong></span>
           <button class="btn btn-secondary btn-sm no-print" onclick="exportCSV()" data-i18n="exportCSV">Exportar CSV</button>
         </div>
@@ -619,7 +622,7 @@ tr:hover td { background: var(--sky-pale); }
             <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipRange"></span></span>
           </div>
           <div class="param-row">
-            <input type="range" id="paramRange" min="4" max="20" value="8" oninput="updateParamDisplay()">
+            <input type="range" id="paramRange" min="2" max="16" value="8" oninput="updateParamDisplay()">
             <div class="param-value" id="paramRangeVal">8 kg</div>
           </div>
         </div>
@@ -630,7 +633,7 @@ tr:hover td { background: var(--sky-pale); }
             <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipPercent"></span></span>
           </div>
           <div class="param-row">
-            <input type="range" id="paramPercent" min="26" max="50" value="33" oninput="updateParamDisplay()">
+            <input type="range" id="paramPercent" min="20" max="50" value="33" oninput="updateParamDisplay()">
             <div class="param-value" id="paramPercentVal">33%</div>
           </div>
         </div>
@@ -658,7 +661,7 @@ tr:hover td { background: var(--sky-pale); }
               <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGroups"></span></span>
             </div>
             <div class="param-row">
-              <input type="range" id="paramGroups" min="2" max="5" value="4" step="1" oninput="updateParamDisplay()">
+              <input type="range" id="paramGroups" min="2" max="8" value="4" step="1" oninput="updateParamDisplay()">
               <div class="param-value" id="paramGroupsVal">4</div>
             </div>
           </div>
@@ -731,9 +734,9 @@ const i18n = {
     genTitle: "Generador de flota aleatoria",
     genCount: "N.º de regatistas",
     genProfile: "Perfil de pesos",
-    genNormal: "Normal (73-83 kg)",
+    genNormal: "Normal (55-115 kg)",
     genWide: "Disperso (55-115 kg)",
-    genClustered: "Concentrado (74-80 kg)",
+    genClustered: "Concentrado (72-82 kg)",
     genBimodal: "Bimodal (2 picos)",
     genAgeProfile: "Perfil de edades",
     genAgeMixed: "Variado (14-72)",
@@ -759,7 +762,7 @@ const i18n = {
     parameters: "Parámetros",
     maxRange: "Rango máx. por grupo",
     maxRangeNote: "Diferencia máxima entre el más ligero y el más pesado del grupo",
-    tooltipRange: "Diferencia máxima de peso (en kg) permitida dentro de un grupo. Ej: con 8 kg, si el más ligero pesa 72 kg, el más pesado no podrá superar 80 kg. Valores bajos → grupos más homogéneos pero quizá desiguales en tamaño.",
+    tooltipRange: "Diferencia máxima de peso (en kg) permitida dentro de un grupo. Ej: con 8 kg, si el más ligero pesa 72 kg, el más pesado no podrá superar 80 kg. En 16+ kg no se aplica límite de rango. Valores bajos → grupos más homogéneos pero quizá desiguales en tamaño.",
     maxPercent: "Tamaño máx. por grupo",
     maxPercentNote: "Porcentaje máximo de la flota en un solo grupo",
     tooltipPercent: "Porcentaje máximo de competidores que puede tener un solo grupo. Ej: con 33% y 30 regatistas, ningún grupo tendrá más de 10. Evita que un grupo acumule demasiados participantes.",
@@ -811,10 +814,13 @@ const i18n = {
     weightRange: "Rango total",
     median: "Mediana",
     numGroups: "N.º de grupos",
-    tooltipGroups: "Número de grupos en los que dividir la flota (2 a 5). Con 4 grupos se activa también el sistema Fijo con los cortes reglamentarios IWCA (70/79/88 kg). Con otros valores, el sistema Fijo se deshabilita.",
+    tooltipGroups: "Número de grupos en los que dividir la flota (2 a 8). Con 4 grupos se activa también el sistema Fijo con los cortes reglamentarios IWCA (70/79/88 kg). Con otros valores, el sistema Fijo se deshabilita.",
     separateGender: "Separar por sexo",
     tooltipGender: "Cuando está activado, la flota se divide en hombres y mujeres y cada sub-flota se reparte en grupos de forma independiente. Los competidores sin sexo asignado se muestran como advertencia.",
     groupE: "Grupo E",
+    groupF: "Grupo F",
+    groupG: "Grupo G",
+    groupH: "Grupo H",
     qualityScore: "Puntuación",
     sizeBalance: "Equilibrio de tamaño",
     weightHomogeneity: "Homogeneidad de peso",
@@ -838,9 +844,9 @@ const i18n = {
     genTitle: "Random fleet generator",
     genCount: "No. of competitors",
     genProfile: "Weight profile",
-    genNormal: "Normal (73-83 kg)",
+    genNormal: "Normal (55-115 kg)",
     genWide: "Wide spread (55-115 kg)",
-    genClustered: "Clustered (74-80 kg)",
+    genClustered: "Clustered (72-82 kg)",
     genBimodal: "Bimodal (2 peaks)",
     genAgeProfile: "Age profile",
     genAgeMixed: "Mixed (14-72)",
@@ -866,7 +872,7 @@ const i18n = {
     parameters: "Parameters",
     maxRange: "Max range per group",
     maxRangeNote: "Maximum difference between lightest and heaviest in a group",
-    tooltipRange: "Maximum weight difference (in kg) allowed within a group. E.g. with 8 kg, if the lightest weighs 72 kg, the heaviest cannot exceed 80 kg. Lower values → more homogeneous groups but possibly unbalanced sizes.",
+    tooltipRange: "Maximum weight difference (in kg) allowed within a group. E.g. with 8 kg, if the lightest weighs 72 kg, the heaviest cannot exceed 80 kg. At 16+ kg no range limit is applied. Lower values → more homogeneous groups but possibly unbalanced sizes.",
     maxPercent: "Max group size",
     maxPercentNote: "Maximum percentage of fleet in a single group",
     tooltipPercent: "Maximum percentage of competitors a single group can have. E.g. with 33% and 30 sailors, no group will have more than 10. Prevents one group from accumulating too many participants.",
@@ -918,10 +924,13 @@ const i18n = {
     weightRange: "Total range",
     median: "Median",
     numGroups: "Number of groups",
-    tooltipGroups: "Number of groups to divide the fleet into (2 to 5). With 4 groups the Fixed system is also enabled with IWCA regulatory cuts (70/79/88 kg). With other values, the Fixed system is disabled.",
+    tooltipGroups: "Number of groups to divide the fleet into (2 to 8). With 4 groups the Fixed system is also enabled with IWCA regulatory cuts (70/79/88 kg). With other values, the Fixed system is disabled.",
     separateGender: "Separate by gender",
     tooltipGender: "When enabled, the fleet is split into males and females and each sub-fleet is divided into groups independently. Competitors without assigned gender are shown as a warning.",
     groupE: "Group E",
+    groupF: "Group F",
+    groupG: "Group G",
+    groupH: "Group H",
     qualityScore: "Quality",
     sizeBalance: "Size balance",
     weightHomogeneity: "Weight homogeneity",
@@ -1104,6 +1113,9 @@ function renderCompetitors() {
     </tr>`;
   }).join('');
   document.getElementById('totalCount').textContent = competitors.length;
+  // Hide competitor list and count when empty
+  document.getElementById('competitorList').style.display = competitors.length ? '' : 'none';
+  document.querySelector('.competitor-count').style.display = competitors.length ? '' : 'none';
 }
 
 // CSV
@@ -1497,7 +1509,8 @@ function divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups) {
 // ============================================================
 function updateParamDisplay() {
   document.getElementById('paramGroupsVal').textContent = document.getElementById('paramGroups').value;
-  document.getElementById('paramRangeVal').textContent = document.getElementById('paramRange').value + ' kg';
+  const rangeVal = parseInt(document.getElementById('paramRange').value);
+  document.getElementById('paramRangeVal').textContent = rangeVal >= 16 ? '16+ kg' : rangeVal + ' kg';
   document.getElementById('paramPercentVal').textContent = document.getElementById('paramPercent').value + '%';
   document.getElementById('paramAgeVal').textContent = document.getElementById('paramAge').value;
   // Disable Fixed tab when not 4 groups
@@ -1563,7 +1576,8 @@ function runAlgorithm() {
     return (b.age || 0) - (a.age || 0);
   });
 
-  const maxRange = parseInt(document.getElementById('paramRange').value);
+  const maxRangeRaw = parseInt(document.getElementById('paramRange').value);
+  const maxRange = maxRangeRaw >= 16 ? Infinity : maxRangeRaw;
   const maxPercent = parseInt(document.getElementById('paramPercent').value) / 100;
   const ageFactor = parseInt(document.getElementById('paramAge').value);
   const separateGender = document.getElementById('paramSeparateGender').checked;
@@ -1607,9 +1621,9 @@ function groupStats(groups) {
   }));
 }
 
-const GROUP_LABELS = ['groupA','groupB','groupC','groupD','groupE'];
-const GROUP_CLASSES = ['group-a','group-b','group-c','group-d','group-e'];
-const GROUP_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6'];
+const GROUP_LABELS = ['groupA','groupB','groupC','groupD','groupE','groupF','groupG','groupH'];
+const GROUP_CLASSES = ['group-a','group-b','group-c','group-d','group-e','group-f','group-g','group-h'];
+const GROUP_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899'];
 
 function renderGroupCards(groups, systemName) {
   const stats = groupStats(groups);
