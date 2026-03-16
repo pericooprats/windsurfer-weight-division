@@ -585,7 +585,7 @@ tr:hover td { background: var(--sky-pale); }
         </div>
 
         <!-- Competitors table -->
-        <div class="competitor-list" id="competitorList" style="display:none">
+        <div class="competitor-list" id="competitorList">
           <table id="competitorTable">
             <thead>
               <tr>
@@ -602,7 +602,7 @@ tr:hover td { background: var(--sky-pale); }
             <tbody id="competitorBody"></tbody>
           </table>
         </div>
-        <div class="competitor-count" style="display:none">
+        <div class="competitor-count">
           <span><span data-i18n="total">Total</span>: <strong id="totalCount">0</strong></span>
           <button class="btn btn-secondary btn-sm no-print" onclick="exportCSV()" data-i18n="exportCSV">Exportar CSV</button>
         </div>
@@ -1114,8 +1114,8 @@ function renderCompetitors() {
   }).join('');
   document.getElementById('totalCount').textContent = competitors.length;
   // Hide competitor list and count when empty
-  document.getElementById('competitorList').style.display = competitors.length ? '' : 'none';
-  document.querySelector('.competitor-count').style.display = competitors.length ? '' : 'none';
+  document.getElementById('competitorList').style.display = '';
+  document.querySelector('.competitor-count').style.display = '';
 }
 
 // CSV
