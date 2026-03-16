@@ -1201,18 +1201,21 @@ function toggleAdvancedParams() {
   btn.classList.toggle('open', isOpen);
 }
 
-const FIRST_NAMES = [
-  "Carlos","Marta","Luis","Ana","Borja","Pedro","Elena","Javier","David","Lucía",
-  "Miguel","Rosa","Pablo","Sandra","Tomás","Laura","Andrés","Carmen","Diego","Raquel",
-  "Iván","Nuria","Sergio","Teresa","Alejandro","Sofía","Hugo","Emma","Nadia","Thomas",
-  "Antoine","Jan","Beatriz","Marco","Freya","Dieter","Rui","Katarina","Nina","Felix",
-  "Mia","Camille","Elias","Inés","Johan","Paula","Francesco","Andrei","Claudia","Oscar",
-  "Martina","Andreas","Julia","Mateo","Henrik","Bruno","Sabine","Luca","Stefan","Eva",
-  "Manuel","Pierre","Adriana","Sven","Viktor","Patrick","Cristina","Joost","Lars",
-  "Álvaro","Ingrid","Jakob","Silvia","Piotr","Daniel","Mónica","Giovanni","Isabel",
-  "Maximilian","Renata","Klaus","Nikolai","Fernando","Hélène","Astrid","Gonzalo",
-  "Willem","Rafael","Charlotte","Dmitri","Santiago","Björn","Olga","Ramón","Erik",
-  "Lukas","María","Liam","Yuki","Oliver","Amélie","Kenzo","Leila","Arjun","Priya"
+const FEMALE_NAMES = [
+  "Marta","Ana","Elena","Lucía","Rosa","Sandra","Laura","Carmen","Raquel","Nuria",
+  "Teresa","Sofía","Emma","Nadia","Beatriz","Freya","Katarina","Nina","Mia","Camille",
+  "Inés","Paula","Claudia","Martina","Julia","Sabine","Eva","Adriana","Cristina","Ingrid",
+  "Silvia","Mónica","Isabel","Renata","Hélène","Astrid","Charlotte","Olga","María","Amélie",
+  "Leila","Priya"
+];
+const MALE_NAMES = [
+  "Carlos","Luis","Borja","Pedro","Javier","David","Miguel","Pablo","Tomás","Andrés",
+  "Diego","Iván","Sergio","Alejandro","Hugo","Thomas","Antoine","Jan","Marco","Dieter",
+  "Rui","Felix","Elias","Johan","Francesco","Andrei","Oscar","Andreas","Mateo","Henrik",
+  "Bruno","Luca","Stefan","Manuel","Pierre","Sven","Viktor","Patrick","Joost","Lars",
+  "Álvaro","Jakob","Piotr","Daniel","Giovanni","Maximilian","Klaus","Nikolai","Fernando",
+  "Gonzalo","Willem","Rafael","Dmitri","Santiago","Björn","Ramón","Erik","Lukas","Liam",
+  "Yuki","Oliver","Kenzo","Arjun"
 ];
 const LAST_NAMES = [
   "Ruiz","Vidal","Bergström","Méndez","Tanaka","Larsen","Kowalski","Richter","Romero",
@@ -1345,15 +1348,15 @@ function generateFleet() {
   for (let i = 0; i < n; i++) {
     let name;
     let attempts = 0;
+    const gender = Math.random() < 0.35 ? 'F' : 'M';
+    const namePool = gender === 'F' ? FEMALE_NAMES : MALE_NAMES;
     do {
-      const first = FIRST_NAMES[randInt(0, FIRST_NAMES.length - 1)];
+      const first = namePool[randInt(0, namePool.length - 1)];
       const last = LAST_NAMES[randInt(0, LAST_NAMES.length - 1)];
       name = first + ' ' + last;
       attempts++;
     } while (usedNames.has(name) && attempts < 50);
     usedNames.add(name);
-
-    const gender = Math.random() < 0.35 ? 'F' : 'M';
     const weight = generateWeight(weightProfile);
     const age = Math.random() < 0.03 ? null : generateAge(ageProfile); // 3% sin edad
     const nationality = generateNationality();
