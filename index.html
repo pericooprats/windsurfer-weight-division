@@ -1821,21 +1821,20 @@ function renderResults(res) {
     document.getElementById('tab-fixed').setAttribute('data-print-title', t('tabFixed'));
     document.getElementById('tab-fixed').innerHTML = hasFixed ? tabContent.fixed : `<div class="notice notice-info">${t('fixedDisabled')}</div>`;
 
-    // Compare tab — aggregate metrics across genders per system
+    // Compare tab — per-gender metrics
     const allSorted = [...(res.male ? res.male.sorted : []), ...(res.female ? res.female.sorted : [])].sort((a,b) => a.weight - b.weight);
-    const systems = [];
+    const compareLabelMap = { elastic: t('elastic'), split: t('split'), fixed: t('fixed') };
+    const compareMetrics = [];
     systemKeys.forEach(key => {
-      const allGroups = [];
-      genders.forEach(g => { if (g.res[key]) allGroups.push(...g.res[key]); });
-      if (allGroups.length) {
-        const labelMap = { elastic: t('elastic'), split: t('split'), fixed: t('fixed') };
-        systems.push({ key, label: labelMap[key], groups: allGroups });
-      }
+      genders.forEach(g => {
+        if (g.res[key]) {
+          const gSorted = g.res.sorted || [];
+          compareMetrics.push({ key, label: `${compareLabelMap[key]} ${g.cls === 'male' ? '♂' : '♀'}`, groups: g.res[key], m: calcMetrics(g.res[key]), q: calculateQualityScore(g.res[key], gSorted) });
+        }
+      });
     });
-
-    const metrics = systems.map(s => ({ ...s, m: calcMetrics(s.groups), q: calculateQualityScore(s.groups, allSorted) }));
     document.getElementById('tab-compare').setAttribute('data-print-title', t('tabCompare'));
-    document.getElementById('tab-compare').innerHTML = renderCompareTable(metrics);
+    document.getElementById('tab-compare').innerHTML = renderCompareTable(compareMetrics);
 
     // Tab badges with quality scores
     genders.forEach(g => {
@@ -1858,22 +1857,30 @@ function renderResults(res) {
       }
     });
 
-    // Chart tab — build combined res for chart
+    // Chart tab — build combined res + gender map for dot differentiation
     document.getElementById('tab-chart').setAttribute('data-print-title', t('tabChart'));
     const combinedRes = { elastic: [], split: [], fixed: hasFixed ? [] : null };
-    genders.forEach(g => {
-      if (g.res.elastic) combinedRes.elastic.push(...g.res.elastic);
-      if (g.res.split) combinedRes.split.push(...g.res.split);
-      if (hasFixed && g.res.fixed) combinedRes.fixed.push(...g.res.fixed);
+    const genderMaps = {};
+    systemKeys.forEach(key => {
+      const map = new Map();
+      genders.forEach(g => {
+        if (g.res[key]) {
+          if (combinedRes[key]) combinedRes[key].push(...g.res[key]);
+          g.res[key].forEach((group, gIdx) => {
+            group.forEach(comp => map.set(comp, { groupIdx: gIdx, gender: g.cls === 'male' ? 'M' : 'F' }));
+          });
+        }
+      });
+      genderMaps[key] = map;
     });
-    renderChart(combinedRes, allSorted);
+    renderChart(combinedRes, allSorted, genderMaps);
   }
 }
 
 // ============================================================
 // DISTRIBUTION CHART
 // ============================================================
-function renderChart(res, sorted) {
+function renderChart(res, sorted, genderMaps) {
   if (!sorted) sorted = [...competitors].sort((a,b) => a.weight - b.weight);
   const minW = sorted[0].weight;
   const maxW = sorted[sorted.length - 1].weight;
@@ -1893,6 +1900,7 @@ function renderChart(res, sorted) {
 
   // Get cut points for each system
   function getCuts(groups) {
+    if (genderMaps) return []; // cuts not meaningful in gender-separated mode
     const cuts = [];
     let idx = 0;
     for (let g = 0; g < groups.length - 1; g++) {
@@ -1976,14 +1984,24 @@ function renderChart(res, sorted) {
       }
       usedPositions.push({ x: baseX + jitterX, y: dotY });
 
-      // Color by group
+      // Color by group (use gender map if available, otherwise position-based)
       let gIdx = 0;
-      let acc = 0;
-      for (let g = 0; g < sys.groups.length; g++) {
-        acc += sys.groups[g].length;
-        if (sorted.indexOf(comp) < acc) { gIdx = g; break; }
+      let isFemale = false;
+      if (genderMaps && genderMaps[sys.key]) {
+        const info = genderMaps[sys.key].get(comp);
+        if (info) { gIdx = info.groupIdx; isFemale = info.gender === 'F'; }
+      } else {
+        let acc = 0;
+        for (let g = 0; g < sys.groups.length; g++) {
+          acc += sys.groups[g].length;
+          if (sorted.indexOf(comp) < acc) { gIdx = g; break; }
+        }
       }
-      html += `<circle cx="${baseX + jitterX}" cy="${dotY}" r="3.5" fill="${groupColors[gIdx]}" opacity="0.8"/>`;
+      if (isFemale) {
+        html += `<circle cx="${baseX + jitterX}" cy="${dotY}" r="4" fill="white" stroke="${groupColors[gIdx]}" stroke-width="2" opacity="0.9"/>`;
+      } else {
+        html += `<circle cx="${baseX + jitterX}" cy="${dotY}" r="3.5" fill="${groupColors[gIdx]}" opacity="0.8"/>`;
+      }
     });
 
     // System label
@@ -1999,8 +2017,11 @@ function renderChart(res, sorted) {
     }
   });
 
+  const genderLegend = genderMaps
+    ? ` &nbsp;·&nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="3.5" fill="#475569"/></svg> ${t('maleFleet')} &nbsp; <svg width="10" height="10" style="vertical-align:middle"><circle cx="5" cy="5" r="4" fill="white" stroke="#475569" stroke-width="1.5"/></svg> ${t('femaleFleet')}`
+    : '';
   html += `</svg>
-    <p style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center">${t('chartLegend')}</p>
+    <p style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center">${t('chartLegend')}${genderLegend}</p>
   `;
 
   document.getElementById('tab-chart').innerHTML = html;
