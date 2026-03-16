@@ -24,9 +24,10 @@ An optional **age factor** can keep competitors from the same IWCA age category 
 - 📂 **CSV import** — Load competitor lists from a file
 - ✏️ **Manual entry** — Add competitors with name, gender, sail number, nationality, age & weight
 - 🏳️ **Country selector** — Dropdown with flags and ISAF sailing codes (ESP, GER, NED…)
-- 🎲 **Fleet generator** — Create random test fleets with configurable profiles
+- 🎲 **Fleet generator** — Create random test fleets with configurable weight profiles (Normal 65–95 kg, Disperso 55–115 kg, Concentrated, Bimodal) and gender-consistent names
 - 📊 **Three-way comparison** — Fixed vs Split vs Elastic side by side
 - 🏅 **Age classes** — Automatic classification (Junior, Youth, Open, Master, G.Master, Legend, S.Legend)
+- ⚥ **Gender separation** — Optionally divide males and females into independent groups
 - 🖨️ **Print / PDF** — Clean printable output with all results
 - 📱 **PWA** — Works offline, installable on any device
 - 🔒 **No server needed** — Everything runs in the browser
@@ -75,15 +76,24 @@ Only **Name** and **Weight** are required. Gender (M/F), Sail number, Country an
 
 Maximum weight difference (in kg) allowed within a single group. For example, with 8 kg, if the lightest sailor in a group weighs 72 kg, the heaviest cannot exceed 80 kg.
 
-- **Lower values** (4–6 kg) → more homogeneous groups, but may produce unequal group sizes
-- **Higher values** (10–20 kg) → more flexibility for balanced sizes, but wider weight spread within groups
+Slider range: **2–16 kg** (at 16 kg the limit is removed — any range is accepted).
+
+- **Lower values** (2–6 kg) → more homogeneous groups, but may produce unequal group sizes
+- **Higher values** (10–15 kg) → more flexibility for balanced sizes, but wider weight spread within groups
+- **16+ kg** → no range limit applied
 
 ### Maximum group size (default: 33%)
 
-Maximum percentage of the total fleet that any single group can contain. For example, with 33% and 30 sailors, no group will exceed 10 competitors.
+Slider range: **20–50%**. Maximum percentage of the total fleet that any single group can contain. For example, with 33% and 30 sailors, no group will exceed 10 competitors.
 
-- **Lower values** (26–30%) → forces very even group sizes
+- **Lower values** (20–30%) → forces very even group sizes
 - **Higher values** (40–50%) → allows more flexibility, useful when weight distribution is very uneven
+
+### Number of groups (default: 4)
+
+Number of groups to divide the fleet into. Range: **2 to 8**.
+
+With 4 groups the **Fixed** system is also enabled (IWCA cut-offs: 70 / 79 / 88 kg). With any other value, Fixed is disabled.
 
 ### Age factor (default: 0)
 
@@ -119,12 +129,12 @@ Where `γ = ageFactor / 10`. The **agePenalty** measures how many age categories
 ## Algorithm
 
 1. Sort competitors by weight (ties broken by age per IWCA Rule H.3.3.2.ii)
-2. Evaluate all possible 3-cut partitions into 4 consecutive groups
+2. Evaluate all possible cut partitions into N consecutive groups (2–8)
 3. Filter by hard constraints (max range, max size)
 4. Score valid partitions by: size balance + range minimisation + age cohesion
 5. If no valid partition exists, progressively relax constraints and report
 
-Complexity: O(N³) — instant for fleets up to 200 competitors.
+Complexity: O(N^(G-1)) where G is the number of groups — instant for typical fleets up to 200 competitors.
 
 ## Proposed by
 
