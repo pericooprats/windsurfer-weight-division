@@ -693,6 +693,67 @@ info('<strong>Test group: computeCost function</strong>');
   assert(costWithAge >= costNoAge, 'T26.2: Age factor adds penalty (cost increases or stays)');
 }
 
+// --- T27: Elastic with Infinity maxRange (no range limit) ---
+info('<strong>Test group: No range limit (maxRange = Infinity)</strong>');
+{
+  const weights = [55, 60, 70, 80, 90, 100, 110, 115];
+  const fleet = makeFleet(weights);
+  const res = divisionElastic(fleet, Infinity, 0.5, 0, 4);
+  assert(res.groups.length === 4, 'T27.1: Produces 4 groups with Infinity range');
+  assert(res.groups.reduce((s, g) => s + g.length, 0) === 8, 'T27.2: All 8 assigned');
+  assert(!res.relaxInfo, 'T27.3: No relaxation needed with Infinity range');
+
+  // Even with very spread fleet and tight size, range is not a constraint
+  const res2 = divisionElastic(fleet, Infinity, 0.33, 0, 4);
+  assert(res2.groups.length === 4, 'T27.4: 4 groups with Infinity range + tight size');
+  assert(res2.groups.reduce((s, g) => s + g.length, 0) === 8, 'T27.5: All assigned');
+}
+
+// --- T28: 6, 7, 8 groups ---
+info('<strong>Test group: Extended group counts (6-8)</strong>');
+{
+  const weights = Array.from({length: 24}, (_, i) => 60 + i * 2.5);
+  const fleet = makeFleet(weights);
+
+  const s6 = divisionSplit(fleet, 6);
+  assert(s6.length === 6, 'T28.1: Split with 6 groups → 6 groups');
+  assert(s6.every(g => g.length === 4), 'T28.2: 24 / 6 → 4 each');
+
+  const s7 = divisionSplit(fleet, 7);
+  assert(s7.length === 7, 'T28.3: Split with 7 groups → 7 groups');
+  assert(s7.reduce((s, g) => s + g.length, 0) === 24, 'T28.4: All 24 assigned with 7 groups');
+
+  const s8 = divisionSplit(fleet, 8);
+  assert(s8.length === 8, 'T28.5: Split with 8 groups → 8 groups');
+  assert(s8.every(g => g.length === 3), 'T28.6: 24 / 8 → 3 each');
+
+  // Elastic with 6 groups
+  const r6 = divisionElastic(fleet, 12, 0.4, 0, 6);
+  assert(r6.groups.length === 6, 'T28.7: Elastic with 6 groups produces 6 groups');
+  assert(r6.groups.reduce((s, g) => s + g.length, 0) === 24, 'T28.8: All 24 assigned with elastic 6 groups');
+
+  // Elastic with 8 groups
+  const r8 = divisionElastic(fleet, 10, 0.25, 0, 8);
+  assert(r8.groups.length === 8, 'T28.9: Elastic with 8 groups produces 8 groups');
+  assert(r8.groups.reduce((s, g) => s + g.length, 0) === 24, 'T28.10: All 24 assigned with elastic 8 groups');
+
+  // Consecutive ordering with 8 groups
+  let consecutive = true;
+  let prevMax = -Infinity;
+  for (const g of r8.groups) {
+    if (g.length === 0) continue;
+    if (g[0].weight < prevMax) { consecutive = false; break; }
+    prevMax = g[g.length - 1].weight;
+  }
+  assert(consecutive, 'T28.11: 8-group elastic maintains consecutive weight ordering');
+
+  // Quality score works with 6 and 8 groups
+  const q6 = calculateQualityScore(r6.groups, fleet);
+  assert(q6.overall >= 0 && q6.overall <= 100, 'T28.12: Quality score valid for 6 groups');
+  const q8 = calculateQualityScore(r8.groups, fleet);
+  assert(q8.overall >= 0 && q8.overall <= 100, 'T28.13: Quality score valid for 8 groups');
+}
+
 // ============================================================
 // SUMMARY
 // ============================================================
