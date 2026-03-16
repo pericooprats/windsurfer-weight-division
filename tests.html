@@ -754,6 +754,72 @@ info('<strong>Test group: Extended group counts (6-8)</strong>');
   assert(q8.overall >= 0 && q8.overall <= 100, 'T28.13: Quality score valid for 8 groups');
 }
 
+// --- T29: CSV error handling ---
+info('<strong>Test group: CSV error handling</strong>');
+{
+  // Valid cases
+  const ok = parseCSVLine('Carlos Ruiz, M, 1234, ESP, 28, 78.5');
+  assert(ok !== null, 'T29.1: Valid full line parses successfully');
+
+  // Header row (weight field is text → NaN)
+  const header = parseCSVLine('Name,Gender,Sail,Country,Age,Weight');
+  assert(header === null, 'T29.2: Header row returns null (weight is NaN)');
+
+  // Missing weight — only 1 field
+  const noWeight = parseCSVLine('Solo Name');
+  assert(noWeight === null, 'T29.3: Line with only name (no weight) returns null');
+
+  // Weight is text
+  const textWeight = parseCSVLine('Pedro, M, 1, ESP, 30, kilos');
+  assert(textWeight === null, 'T29.4: Non-numeric weight returns null');
+
+  // Weight is zero
+  const zeroWeight = parseCSVLine('Pedro, M, 1, ESP, 30, 0');
+  assert(zeroWeight === null, 'T29.5: Weight = 0 returns null');
+
+  // Negative weight
+  const negWeight = parseCSVLine('Pedro, M, 1, ESP, 30, -5');
+  assert(negWeight === null, 'T29.6: Negative weight returns null');
+
+  // Empty name
+  const noName = parseCSVLine(', M, 1, ESP, 30, 78');
+  assert(noName === null, 'T29.7: Empty name returns null');
+
+  // Empty line
+  const emptyLine = parseCSVLine('');
+  assert(emptyLine === null, 'T29.8: Empty line returns null');
+
+  // Invalid gender (not M/F) → null gender but valid competitor
+  const badGender = parseCSVLine('Pedro, X, 1, ESP, 30, 78');
+  assert(badGender !== null, 'T29.9: Invalid gender still parses (gender → null)');
+  assert(badGender !== null && badGender.gender === null, 'T29.10: Invalid gender value becomes null');
+
+  // Invalid age (text) → null age but valid competitor
+  const badAge = parseCSVLine('Pedro, M, 1, ESP, old, 78');
+  assert(badAge !== null, 'T29.11: Invalid age still parses (age → null)');
+  assert(badAge !== null && badAge.age === null, 'T29.12: Invalid age value becomes null');
+
+  // Extra whitespace is trimmed
+  const spacey = parseCSVLine('  Ana García  ,  F  ,  9999  ,  ESP  ,  25  ,  65.0  ');
+  assert(spacey !== null, 'T29.13: Whitespace-padded line parses correctly');
+  assert(spacey !== null && spacey.name === 'Ana García', 'T29.14: Name trimmed correctly');
+  assert(spacey !== null && spacey.weight === 65.0, 'T29.15: Weight trimmed and parsed correctly');
+
+  // Old 2-field format (name, weight) — weight falls back to parts[1]
+  const old2 = parseCSVLine('Ramón Soto, 82');
+  assert(old2 !== null, 'T29.16: Old 2-field format (name, weight) parses successfully');
+  assert(old2 !== null && old2.weight === 82, 'T29.17: Old format weight parsed from field 2');
+
+  // Semicolons instead of commas → treated as single field, weight is NaN
+  const semicolons = parseCSVLine('Pedro;M;1;ESP;30;78');
+  assert(semicolons === null, 'T29.18: Semicolon-delimited line returns null (wrong delimiter)');
+
+  // Extremely large weight (unrealistic but numeric) — should parse (no upper bound in function)
+  const bigWeight = parseCSVLine('Hulk, M, 1, USA, 30, 999');
+  assert(bigWeight !== null, 'T29.19: Very large (but numeric) weight parses (no upper limit enforced)');
+  assert(bigWeight !== null && bigWeight.weight === 999, 'T29.20: Extreme weight value preserved as-is');
+}
+
 // ============================================================
 // SUMMARY
 // ============================================================
