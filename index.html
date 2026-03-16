@@ -99,7 +99,8 @@ body {
 }
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
-  .grid-2 > * { min-width: 0; overflow: hidden; }
+  .grid-2 > * { min-width: 0; }
+  .competitor-list { max-width: 100%; }
 }
 
 /* --- CARDS --- */
@@ -363,7 +364,29 @@ tr:hover td { background: var(--sky-pale); }
   .param-slider label { min-width: unset; }
   .param-label-wrap { min-width: 100%; }
   .param-note { margin-left: 0; }
-  .tooltip-icon .tooltip-text { left: 0; transform: none; width: 220px; }
+  /* Tooltips: mostrar hacia abajo en móvil para evitar que la card los recorte */
+  .tooltip-icon .tooltip-text {
+    left: 0; transform: none; width: 220px;
+    bottom: auto; top: calc(100% + 8px);
+  }
+  .tooltip-icon .tooltip-text::after {
+    top: auto; bottom: 100%;
+    border-top-color: transparent; border-bottom-color: #1e293b;
+  }
+  /* El tooltip del quality en resultados (dentro de metric-chip) sí debe ir hacia arriba */
+  .metric-chip .tooltip-icon .tooltip-text {
+    top: auto; bottom: calc(100% + 8px);
+  }
+  .metric-chip .tooltip-icon .tooltip-text::after {
+    bottom: auto; top: 100%;
+    border-bottom-color: transparent; border-top-color: #1e293b;
+  }
+  /* Acotar min-width:100% sólo a sliders, para no romper el toggle-wrap */
+  .param-label-wrap { min-width: unset; }
+  .param-slider .param-label-wrap { min-width: 100%; }
+  /* Toggle en móvil: alinear bien, mismo padding que el resto de sliders */
+  .toggle-wrap { flex-wrap: nowrap; align-items: center; padding: 4px 0; }
+  .toggle-wrap .param-label-wrap { flex: 1; min-width: 0; }
   .groups-grid { grid-template-columns: 1fr; }
 }
 
@@ -396,6 +419,20 @@ tr:hover td { background: var(--sky-pale); }
 
 /* --- TAB DISABLED --- */
 .system-tab.tab-disabled { opacity: 0.35; pointer-events: none; }
+
+/* --- PARAMS ADVANCED SECTION --- */
+.params-divider {
+  border: none; border-top: 1px dashed var(--gray-200);
+  margin: 12px 0 14px;
+}
+.params-advanced-btn {
+  width: 100%; justify-content: center;
+  color: var(--gray-400); border-color: var(--gray-200);
+  font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase;
+  margin-bottom: 0;
+}
+.params-advanced-btn:hover { color: var(--blue); border-color: var(--blue); }
+.params-advanced-btn.open { color: var(--blue); border-color: var(--blue); background: var(--sky-pale); margin-bottom: 12px; }
 
 /* --- GENDER SECTION HEADER --- */
 .gender-section-header {
@@ -575,17 +612,7 @@ tr:hover td { background: var(--sky-pale); }
         <h2><span class="icon">⚙️</span> <span data-i18n="parameters">Parámetros</span></h2>
       </div>
       <div class="card-body">
-        <div class="param-slider">
-          <div class="param-label-wrap">
-            <label data-i18n="numGroups">N.º de grupos</label>
-            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGroups"></span></span>
-          </div>
-          <div class="param-row">
-            <input type="range" id="paramGroups" min="2" max="5" value="4" step="1" oninput="updateParamDisplay()">
-            <div class="param-value" id="paramGroupsVal">4</div>
-          </div>
-        </div>
-
+        <!-- Main parameters -->
         <div class="param-slider">
           <div class="param-label-wrap">
             <label data-i18n="maxRange">Rango máx. por grupo</label>
@@ -608,17 +635,6 @@ tr:hover td { background: var(--sky-pale); }
           </div>
         </div>
 
-        <div class="param-slider">
-          <div class="param-label-wrap">
-            <label data-i18n="ageFactor">Factor de edad</label>
-            <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipAge"></span></span>
-          </div>
-          <div class="param-row">
-            <input type="range" id="paramAge" min="0" max="10" value="0" oninput="updateParamDisplay()">
-            <div class="param-value" id="paramAgeVal">0</div>
-          </div>
-        </div>
-
         <div class="toggle-wrap">
           <label class="toggle-switch">
             <input type="checkbox" id="paramSeparateGender">
@@ -627,6 +643,35 @@ tr:hover td { background: var(--sky-pale); }
           <div class="param-label-wrap">
             <label data-i18n="separateGender" style="cursor:pointer" onclick="document.getElementById('paramSeparateGender').click()">Separar por sexo</label>
             <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGender"></span></span>
+          </div>
+        </div>
+
+        <!-- Advanced parameters (collapsible) -->
+        <div class="params-divider"></div>
+        <button class="manual-toggle-btn params-advanced-btn" onclick="toggleAdvancedParams()" id="advancedParamsBtn">
+          <span class="chevron">&#9654;</span> <span data-i18n="advancedParams">Parámetros avanzados</span>
+        </button>
+        <div class="manual-entry-panel" id="advancedParamsPanel">
+          <div class="param-slider">
+            <div class="param-label-wrap">
+              <label data-i18n="numGroups">N.º de grupos</label>
+              <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipGroups"></span></span>
+            </div>
+            <div class="param-row">
+              <input type="range" id="paramGroups" min="2" max="5" value="4" step="1" oninput="updateParamDisplay()">
+              <div class="param-value" id="paramGroupsVal">4</div>
+            </div>
+          </div>
+
+          <div class="param-slider" style="margin-bottom:0">
+            <div class="param-label-wrap">
+              <label data-i18n="ageFactor">Factor de edad</label>
+              <span class="tooltip-icon">?<span class="tooltip-text" id="tooltipAge"></span></span>
+            </div>
+            <div class="param-row">
+              <input type="range" id="paramAge" min="0" max="10" value="0" oninput="updateParamDisplay()">
+              <div class="param-value" id="paramAgeVal">0</div>
+            </div>
           </div>
         </div>
 
@@ -779,6 +824,7 @@ const i18n = {
     minCompetitorsN: "Se necesitan al menos {n} regatistas",
     fixedDisabled: "El sistema Fijo solo está disponible con 4 grupos",
     manualEntry: "Añadir manualmente",
+    advancedParams: "Parámetros avanzados",
     tooltipQuality: "Media de equilibrio de tamaño y homogeneidad de peso (0-100). Cuanto más alto, mejor repartida está la flota.",
     tooltipSizeBalance: "Mide lo equilibrados que están los grupos en número de regatistas (0-100). 100 = todos los grupos tienen el mismo tamaño.",
     tooltipWeightHomogeneity: "Mide lo compactos que son los grupos en rango de peso (0-100). 100 = cada grupo tiene un rango de peso mínimo.",
@@ -885,6 +931,7 @@ const i18n = {
     minCompetitorsN: "At least {n} competitors are required",
     fixedDisabled: "Fixed system is only available with 4 groups",
     manualEntry: "Add manually",
+    advancedParams: "Advanced parameters",
     tooltipQuality: "Average of size balance and weight homogeneity (0-100). The higher, the better the fleet is divided.",
     tooltipSizeBalance: "Measures how balanced the groups are in number of competitors (0-100). 100 = all groups have the same size.",
     tooltipWeightHomogeneity: "Measures how compact each group's weight range is (0-100). 100 = each group has a minimal weight spread.",
@@ -1131,6 +1178,13 @@ function toggleGenerator() {
 function toggleManualEntry() {
   const panel = document.getElementById('manualEntryPanel');
   const btn = document.getElementById('manualToggleBtn');
+  const isOpen = panel.classList.toggle('visible');
+  btn.classList.toggle('open', isOpen);
+}
+
+function toggleAdvancedParams() {
+  const panel = document.getElementById('advancedParamsPanel');
+  const btn = document.getElementById('advancedParamsBtn');
   const isOpen = panel.classList.toggle('visible');
   btn.classList.toggle('open', isOpen);
 }
