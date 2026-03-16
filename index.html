@@ -518,7 +518,7 @@ tr:hover td { background: var(--sky-pale); }
             <div class="form-group">
               <label data-i18n="genProfile">Perfil de pesos</label>
               <select id="genProfile">
-                <option value="normal" data-i18n-opt="genNormal">Normal (55-115 kg)</option>
+                <option value="normal" data-i18n-opt="genNormal">Normal (65-95 kg)</option>
                 <option value="wide" data-i18n-opt="genWide">Disperso (55-115 kg)</option>
                 <option value="clustered" data-i18n-opt="genClustered">Concentrado (72-82 kg)</option>
                 <option value="bimodal" data-i18n-opt="genBimodal">Bimodal (2 picos)</option>
@@ -585,7 +585,7 @@ tr:hover td { background: var(--sky-pale); }
         </div>
 
         <!-- Competitors table -->
-        <div class="competitor-list" id="competitorList" style="display:none">
+        <div class="competitor-list" id="competitorList">
           <table id="competitorTable">
             <thead>
               <tr>
@@ -602,7 +602,7 @@ tr:hover td { background: var(--sky-pale); }
             <tbody id="competitorBody"></tbody>
           </table>
         </div>
-        <div class="competitor-count" style="display:none">
+        <div class="competitor-count">
           <span><span data-i18n="total">Total</span>: <strong id="totalCount">0</strong></span>
           <button class="btn btn-secondary btn-sm no-print" onclick="exportCSV()" data-i18n="exportCSV">Exportar CSV</button>
         </div>
@@ -734,7 +734,7 @@ const i18n = {
     genTitle: "Generador de flota aleatoria",
     genCount: "N.º de regatistas",
     genProfile: "Perfil de pesos",
-    genNormal: "Normal (55-115 kg)",
+    genNormal: "Normal (65-95 kg)",
     genWide: "Disperso (55-115 kg)",
     genClustered: "Concentrado (72-82 kg)",
     genBimodal: "Bimodal (2 picos)",
@@ -844,7 +844,7 @@ const i18n = {
     genTitle: "Random fleet generator",
     genCount: "No. of competitors",
     genProfile: "Weight profile",
-    genNormal: "Normal (55-115 kg)",
+    genNormal: "Normal (65-95 kg)",
     genWide: "Wide spread (55-115 kg)",
     genClustered: "Clustered (72-82 kg)",
     genBimodal: "Bimodal (2 peaks)",
@@ -1114,8 +1114,8 @@ function renderCompetitors() {
   }).join('');
   document.getElementById('totalCount').textContent = competitors.length;
   // Hide competitor list and count when empty
-  document.getElementById('competitorList').style.display = competitors.length ? '' : 'none';
-  document.querySelector('.competitor-count').style.display = competitors.length ? '' : 'none';
+  document.getElementById('competitorList').style.display = '';
+  document.querySelector('.competitor-count').style.display = '';
 }
 
 // CSV
@@ -1276,9 +1276,9 @@ function generateWeight(profile) {
   let w;
   switch (profile) {
     case 'normal':
-      // Realistic: centered at 78, most between 73-83
+      // Realistic: centered at 78, most between 65-95
       w = gaussRand(78, 6);
-      w = clamp(w, 55, 115);
+      w = clamp(w, 65, 95);
       break;
     case 'wide':
       // Very spread out, uniform-ish across full range
