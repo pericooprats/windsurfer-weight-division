@@ -1444,6 +1444,8 @@ function computeCost(groups, idealSize, sorted, ageFactor) {
 function divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups) {
   numGroups = numGroups || 4;
   const n = sorted.length;
+  const idealSize = n / numGroups;
+  const totalRange = n > 1 ? sorted[n-1].weight - sorted[0].weight : 0;
 
   let bestPartition = null;
   let bestCost = Infinity;
@@ -1455,36 +1457,45 @@ function divisionElastic(sorted, maxRange, maxPercent, ageFactor, numGroups) {
 
   while (!bestPartition && attempts < 20) {
     const currentMaxSize = Math.ceil(currentMaxPercent * n);
-    const idealSize = n / numGroups;
 
-    function recurse(depth, startIdx, currentGroups) {
-      if (depth === numGroups - 1) {
-        const lastGroup = sorted.slice(startIdx, n);
-        if (lastGroup.length === 0 || lastGroup.length > currentMaxSize) return;
-        const range = lastGroup[lastGroup.length-1].weight - lastGroup[0].weight;
-        if (range > currentMaxRange) return;
-        const groups = [...currentGroups, lastGroup];
-        const cost = computeCost(groups, idealSize, sorted, ageFactor);
-        if (cost < bestCost) {
-          bestCost = cost;
-          bestPartition = groups;
+    // DP: dp[j][i] = min decomposable cost for first i competitors in j groups
+    // Decomposable cost = sizeVar component + rangeNorm component
+    // (agePenalty cannot be decomposed; full cost computed after reconstruction)
+    const dp = Array.from({length: numGroups + 1}, () => new Array(n + 1).fill(null));
+    dp[0][0] = { cost: 0, prev: -1 };
+
+    for (let j = 1; j <= numGroups; j++) {
+      const iMax = n - (numGroups - j); // leave at least 1 per remaining group
+      for (let i = j; i <= iMax; i++) {
+        // Try all valid start positions k for the j-th group [k..i-1]
+        // Iterate k from i-1 downward: as k decreases, size and range increase → early break
+        for (let k = i - 1; k >= j - 1; k--) {
+          if (dp[j-1][k] === null) continue;
+          const size = i - k;
+          if (size > currentMaxSize) break;
+          const range = sorted[i-1].weight - sorted[k].weight;
+          if (range > currentMaxRange) break;
+          const sizePart = Math.pow(size - idealSize, 2) / idealSize;
+          const rangePart = totalRange > 0 ? range / totalRange : 0;
+          const cost = dp[j-1][k].cost + sizePart + rangePart;
+          if (dp[j][i] === null || cost < dp[j][i].cost) {
+            dp[j][i] = { cost, prev: k };
+          }
         }
-        return;
-      }
-
-      const minRemaining = numGroups - depth - 1;
-      const maxEnd = n - minRemaining;
-
-      for (let cutIdx = startIdx + 1; cutIdx <= maxEnd; cutIdx++) {
-        const group = sorted.slice(startIdx, cutIdx);
-        if (group.length > currentMaxSize) break;
-        const range = group[group.length-1].weight - group[0].weight;
-        if (range > currentMaxRange) break;
-        recurse(depth + 1, cutIdx, [...currentGroups, group]);
       }
     }
 
-    recurse(0, 0, []);
+    if (dp[numGroups][n] !== null) {
+      const groups = [];
+      let i = n;
+      for (let j = numGroups; j >= 1; j--) {
+        const k = dp[j][i].prev;
+        groups.unshift(sorted.slice(k, i));
+        i = k;
+      }
+      bestPartition = groups;
+      bestCost = computeCost(groups, idealSize, sorted, ageFactor);
+    }
 
     if (!bestPartition) {
       attempts++;
